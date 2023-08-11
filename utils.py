@@ -4,13 +4,11 @@ import os
 import csv
 import numpy as np
 import pandas as pd
-from typing import Iterable, List, Dict, Tuple, TypeVar
-from dataclasses import dataclass
+from typing import Iterable, List, Tuple, TypeVar
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import time
 import itertools
-import pyproj
 import msgspec
 
 pd.options.plotting.backend = "plotly"
@@ -32,40 +30,26 @@ pd.options.plotting.backend = "plotly"
 #     pid: int
 #     hops: List[Hop]
 
-Route = Tuple[int, List[Tuple[str, int, float, float, int]]]
+Route = Tuple[int, int, List[Tuple[str, int, float, float, int]]]
 
 K = TypeVar("K")
 
-class hash_list(list): 
-    def __init__(self, *args): 
-        if len(args) == 1 and isinstance(args[0], Iterable): 
-            args = args[0] 
-        super().__init__(args) 
-         
-    def __hash__(self): 
+
+class hash_list(list):
+    def __init__(self, *args):
+        if len(args) == 1 and isinstance(args[0], Iterable):
+            args = args[0]
+        super().__init__(args)
+
+    def __hash__(self):
         return hash(e for e in self)
-    
+
 
 def pairwise(iterable: Iterable[K]) -> Iterable[Tuple[K, K]]:
     "s -> (s0, s1), (s1, s2), (s2, s3), ..."
     a, b = itertools.tee(iterable)
     next(b, None)
     return zip(a, b)
-
-
-transformer = pyproj.Transformer.from_crs(
-    {"proj": "latlong", "ellps": "WGS84", "datum": "WGS84"},
-    {"proj": "geocent", "ellps": "WGS84", "datum": "WGS84"},
-)
-
-
-def calculate_distance(route: Route, ndigits = 0) -> float:
-    dist = 0.0
-    for a, b in pairwise(route[1]):
-        x1, y1, z1 = transformer.transform(a[3], a[2], a[4], radians=False)
-        x2, y2, z2 = transformer.transform(b[3], b[2], b[4], radians=False)
-        dist += np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2) / 1000.0
-    return round(dist, ndigits)
 
 
 def load_routes(path: str) -> List[Route]:
@@ -95,6 +79,7 @@ def load_simulation_paths(
 
     return (stats_file_path, routes_file_path)
 
+
 def find_min_value(dfs: List[pd.DataFrame], value: str) -> int:
     assert len(dfs) > 0
     min_val = dfs.pop()[value].min()
@@ -103,6 +88,7 @@ def find_min_value(dfs: List[pd.DataFrame], value: str) -> int:
         if df_min < min_val:
             min_val = df_min
     return min_val
+
 
 def find_max_value(dfs: List[pd.DataFrame], value: str) -> int:
     assert len(dfs) > 0
@@ -128,7 +114,7 @@ def plot_cdf(
     max_val,
     col: str,
     file_name: str,
-    continuous = False,
+    continuous=False,
 ):
     fig = make_subplots()
     for name, df in dfs:
@@ -138,10 +124,9 @@ def plot_cdf(
             .pipe(pd.DataFrame)
             .rename(columns={col: "frequency"})
         )
-        print(stats_df)
         if not continuous:
             stats_df = stats_df.reindex(list(range(0, max_val + 1)), fill_value=0)
-        print(stats_df)
+
         stats_df["pdf"] = stats_df["frequency"] / sum(stats_df["frequency"])
 
         stats_df["cdf"] = stats_df["pdf"].cumsum()
@@ -159,11 +144,11 @@ def plot_cdf(
     fig.update_layout(
         legend=dict(yanchor="bottom", y=0.05, xanchor="right", x=0.95),
     )
-    print("Write1")
+    print("Write to file")
     fig.write_image(file_name, engine="kaleido")
-    time.sleep(1)
-    print("Write2")
-    fig.write_image(file_name, engine="kaleido")
+    # time.sleep(1)
+    # print("Write2")
+    # fig.write_image(file_name, engine="kaleido")
 
 
 def get_route_dump_file(
@@ -172,37 +157,3 @@ def get_route_dump_file(
     path = f"routes/{alg}/{cstl}/{sim_name}"
     file_path = f"{path}/{run}.routes.msgpack"
     return (path, file_path)
-
-
-# def load_routes(routes_path: str) -> List[Route]:
-#     def parse_row(row: List[str]) -> Tuple[int, str, int, float, float, int]:
-#         pid = int(row[0])
-#         type = row[1]
-#         id = int(row[2])
-#         lat = float(row[3])
-#         lon = float(row[4])
-#         alt = int(row[5])
-#         return (pid, type, id, lat, lon, alt)
-
-#     routes = list()
-
-#     with open(routes_path) as routes_file:
-#         reader = csv.reader(routes_file)
-#         current_id = None
-#         route: List[Hop] = []
-#         for num, row in enumerate(reader):
-#             if num == 0:
-#                 continue
-#             (pid, type, id, lat, lon, alt) = parse_row(row)
-#             if current_id is None:
-#                 current_id = pid
-#             elif current_id != pid:
-#                 # finish up creation
-#                 assert len(route) >= 1  # at least 1 hop
-#                 routes.append(Route(current_id, route.copy()))
-#                 current_id = pid
-#                 route.clear()
-#             # add hop
-#             hop = Hop(type, id, lat, lon, alt)
-#             route.append(hop)
-#     return routes

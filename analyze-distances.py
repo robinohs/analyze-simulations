@@ -7,11 +7,9 @@ import pandas as pd
 import route_loader
 from multiprocessing import Pool, cpu_count
 from functools import cache, lru_cache, reduce
+import route_loader
 
 from utils import (
-    # Hop,
-    # Route,
-    calculate_distance,
     find_max_value,
     find_min_value,
     get_route_dump_file,
@@ -29,7 +27,11 @@ from utils import (
 
 
 ########## CONFIG ##########
-algorithms = [("Random", "random"), ("DSPA", "dspr"), ("DDRA", "ddra")]
+algorithms = [
+    ("Random", "random"),
+    ("DSPA", "dspr"),
+    ("DDRA", "ddra")
+    ]
 # algorithms = [("DSPA", "dspr")]
 cstl = "iridium"
 sim_name = "normal"
@@ -50,16 +52,14 @@ def load_data(algs, cstl, sim_name, runs_per_sim) -> List[Tuple[str, pd.DataFram
             (_, file_path) = get_route_dump_file(alg, cstl, sim_name, run)
 
             print("\t", "Load", file_path)
-            routes = load_routes(file_path)
-
-            print("\t", "Start calculating distances")
-            result = list(map(calculate_distance, routes))
+            routes = route_loader.load_routes(file_path)
+            distances = list(map(lambda r: r.length, routes))
 
             print("\t", "Load stats dataframe")
             df = pd.read_csv(stats_path)
 
-            print("\t", "Combine dataframe and distances")
-            df["distance"] = result
+            # print("\t", "Combine dataframe and distances")
+            df["distance"] = distances
             df = df.loc[(df["dropReason"] == 99) & (df["type"] == "N")]
             run_dfs.append(df)
         df_overall = pd.concat(run_dfs)
@@ -69,7 +69,7 @@ def load_data(algs, cstl, sim_name, runs_per_sim) -> List[Tuple[str, pd.DataFram
 
 ########## Plot data ##########
 
-plot_dfs = load_data(algorithms, cstl, sim_name, 1)
+plot_dfs = load_data(algorithms, cstl, sim_name, runs_per_sim)
 
 print("Plot data")
 max_distance = find_max_value(list(map(lambda df: df[1], plot_dfs)), "distance")

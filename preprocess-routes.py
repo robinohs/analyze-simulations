@@ -20,5 +20,4 @@ for name, alg in algorithms:
         print("\tRead + Convert:", routes_fp)
         print("\t-> Dump to:", file_path)
         # Call Rust library function
-        route_loader.process_routes(routes_fp, path, file_path) # type: ignore
-        
+        route_loader.process_routes(routes_fp, path, file_path)

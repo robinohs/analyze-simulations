@@ -1,3 +1,4 @@
+florasat_results_path = "/home/royal/omnetpp-6.0.1/samples/florasat/simulations/routing/results"
 routes_path = "/home/royal/simulations/routes"
 results_path = "/home/royal/simulations/results"
 runs = 4

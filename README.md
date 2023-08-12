@@ -15,3 +15,4 @@ You can install ***florasat_statistics*** with pip as follows:
     pip install florasat-statistics
 
 The CLI can be downloaded from Github.
+s

@@ -4,7 +4,7 @@ import pandas as pd
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
-from utils import Config, load_stats
+from florasat.utils import Config, load_stats
 
 
 def analyze_packetloss(config: Config):

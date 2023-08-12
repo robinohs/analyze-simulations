@@ -1,4 +1,4 @@
-from utils import Config, get_route_dump_file, load_simulation_paths
+from florasat.utils import Config, get_route_dump_file, load_simulation_paths
 import florasat_statistics
 
 

@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import florasat_statistics
 
-from utils import Config, get_route_dump_file, load_simulation_paths
+from florasat.utils import Config, get_route_dump_file, load_simulation_paths
 
 
 @dataclass

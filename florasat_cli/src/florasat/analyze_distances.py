@@ -2,7 +2,7 @@ from typing import List, Tuple
 import pandas as pd
 import florasat_statistics
 
-from utils import (
+from florasat.utils import (
     Config,
     get_route_dump_file,
     load_simulation_paths,

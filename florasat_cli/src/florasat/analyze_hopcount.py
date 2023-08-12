@@ -1,7 +1,7 @@
 from typing import List, Tuple
 import pandas as pd
 
-from utils import (
+from florasat.utils import (
     Config,
     load_stats,
     plot_cdf,

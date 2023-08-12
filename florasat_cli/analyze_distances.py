@@ -1,28 +1,28 @@
 from typing import List, Tuple
 import pandas as pd
-import route_loader
-import route_loader
+import florasat_statistics
 
 from utils import (
+    Config,
     get_route_dump_file,
     load_simulation_paths,
     plot_cdf,
 )
 
 
-def analyze_distances(algorithms, cstl, sim_name, runs_per_sim):
+def analyze_distances(config: Config):
     ########### load data ##########
     plot_dfs: List[Tuple[str, pd.DataFrame]] = []
-    for alg in algorithms:
-        print("\t", f"Working on {alg}/{cstl}/{sim_name}")
+    for alg in config.algorithms:
+        print("\t", f"Working on {alg}/{config.cstl}/{config.sim_name}")
         # Load all runs
         run_dfs = []
-        for run in range(0, runs_per_sim):
-            (stats_path, _) = load_simulation_paths(alg, cstl, sim_name, run)
-            (_, file_path) = get_route_dump_file(alg, cstl, sim_name, run)
+        for run in range(0, config.runs):
+            (stats_path, _) = load_simulation_paths(config, alg, run)
+            (_, file_path) = get_route_dump_file(config, alg, run)
 
             print("\t", "Load", file_path)
-            routes = route_loader.load_routes(file_path)
+            routes = florasat_statistics.load_routes(str(file_path))
             distances = list(map(lambda r: r.length, routes))
 
             print("\t", "Load stats dataframe")
@@ -35,5 +35,7 @@ def analyze_distances(algorithms, cstl, sim_name, runs_per_sim):
         plot_dfs.append((alg, df_overall))
 
     ########## Plot data ##########
-    file_name = f"distance-{cstl}-{sim_name}.cdf.pdf"
-    plot_cdf(plot_dfs, "distance", file_name)
+    file_path = config.results_path.joinpath(
+        f"distance-{config.cstl}-{config.sim_name}.cdf.pdf"
+    )
+    plot_cdf(plot_dfs, "distance", file_path)

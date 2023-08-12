@@ -1,14 +1,11 @@
-from math import sqrt
 from dataclasses import dataclass, asdict
 import time
-from typing import Dict, List, Tuple
+from typing import List
 import pandas as pd
-from route_loader import load_routes
 import plotly.graph_objects as go
-import plotly.express as px
-import route_loader
+import florasat_statistics
 
-from utils import get_route_dump_file, load_simulation_paths, load_stats
+from utils import Config, get_route_dump_file, load_simulation_paths
 
 
 @dataclass
@@ -62,21 +59,21 @@ class Groundstation:
 #     return (m_lat, m_lon)
 
 
-def create_drop_heatmap(algorithms, cstl, sim_name, runs_per_sim):
+def create_drop_heatmap(config: Config):
     ########### load data ##########
-    for alg in algorithms:
+    for alg in config.algorithms:
         ground_stations: List = []
         seen_ids = set()
         # get groundstations that were involved in traffic
         run_dfs = []
-        for run in range(0, runs_per_sim):
-            (stats_fp, _) = load_simulation_paths(alg, cstl, sim_name, run)
+        for run in range(0, config.runs):
+            (stats_fp, _) = load_simulation_paths(config, alg, run)
             df = pd.read_csv(stats_fp)
             # load and process routes
-            (_, file_path) = get_route_dump_file(alg, cstl, sim_name, run)
+            (_, file_path) = get_route_dump_file(config, alg, run)
 
             print("\t", "Load", file_path)
-            routes = load_routes(file_path)
+            routes = florasat_statistics.load_routes(str(file_path))
 
             print("\t", "Get ground stations...")
             for r in routes:
@@ -146,7 +143,9 @@ def create_drop_heatmap(algorithms, cstl, sim_name, runs_per_sim):
         )
 
         print("\t", "Write plot to file...")
-        file_name = f"dropspots-{alg}-{cstl}-{sim_name}.map.pdf"
-        fig.write_image(file_name, engine="kaleido")
-        time.sleep(1)
-        fig.write_image(file_name, engine="kaleido")
+        file_path = config.results_path.joinpath(
+            f"dropspots-{alg}-{config.cstl}-{config.sim_name}.map.pdf"
+        )
+        fig.write_image(file_path, engine="kaleido")
+        # time.sleep(1)
+        # fig.write_image(file_path, engine="kaleido")

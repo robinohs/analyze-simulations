@@ -9,9 +9,8 @@ class Hop:
     lon: float
     alt: int
 
-    def to_ecef(self) -> Tuple[float, float ,float]:
+    def to_ecef(self) -> Tuple[float, float, float]:
         pass
-
     def distance(self, other: Hop) -> float:
         pass
 

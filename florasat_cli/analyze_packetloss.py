@@ -4,16 +4,16 @@ import pandas as pd
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
-from utils import load_stats
+from utils import Config, load_stats
 
 
-def analyze_packetloss(algorithms, cstl, sim_name, runs_per_sim):
+def analyze_packetloss(config: Config):
     ########### load data ##########
     named_dfs: List[Tuple[str, pd.DataFrame]] = []
-    for alg in algorithms:
-        print("\t", f"Working on {alg}/{cstl}/{sim_name}...")
+    for alg in config.algorithms:
+        print("\t", f"Working on {alg}/{config.cstl}/{config.sim_name}...")
         # Load all runs
-        df = load_stats(alg, cstl, sim_name, runs_per_sim)
+        df = load_stats(config, alg)
         # Concat runs
         df = pd.concat(df)
         # add to data
@@ -58,7 +58,6 @@ def analyze_packetloss(algorithms, cstl, sim_name, runs_per_sim):
 
     ########## Plot data ##########
     print("\t", "Create plot...")
-    file_name = f"packetloss-{cstl}-{sim_name}.sum.pdf"
     fig = make_subplots()
     for name, df in processed_dfs:
         fig.add_trace(
@@ -74,6 +73,9 @@ def analyze_packetloss(algorithms, cstl, sim_name, runs_per_sim):
         legend=dict(yanchor="top", y=0.95, xanchor="left", x=0.05),
     )
     print("\t", "Write plot to file...")
-    fig.write_image(file_name, engine="kaleido")
+    file_path = config.results_path.joinpath(
+        f"packetloss-{config.cstl}-{config.sim_name}.sum.pdf"
+    )
+    fig.write_image(file_path, engine="kaleido")
     time.sleep(1)
-    fig.write_image(file_name, engine="kaleido")
+    fig.write_image(file_path, engine="kaleido")

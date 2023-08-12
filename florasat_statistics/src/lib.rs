@@ -142,7 +142,7 @@ fn calculate_distance(hops: &Vec<Hop>) -> u32 {
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn route_loader(_py: Python, m: &PyModule) -> PyResult<()> {
+fn florasat_statistics(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Hop>()?;
     m.add_class::<Route>()?;
     m.add_function(wrap_pyfunction!(load_routes, m)?)?;

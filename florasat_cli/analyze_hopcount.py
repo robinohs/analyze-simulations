@@ -2,18 +2,19 @@ from typing import List, Tuple
 import pandas as pd
 
 from utils import (
+    Config,
     load_stats,
     plot_cdf,
 )
 
 
-def analyze_hopcounts(algorithms, cstl, sim_name, runs_per_sim):
+def analyze_hopcounts(config: Config):
     ########### load data ##########
     named_dfs: List[Tuple[str, pd.DataFrame]] = []
-    for alg in algorithms:
-        print("\t", f"Working on {alg}/{cstl}/{sim_name}")
+    for alg in config.algorithms:
+        print("\t", f"Working on {alg}/{config.cstl}/{config.sim_name}")
         # Load all runs
-        df = load_stats(alg, cstl, sim_name, runs_per_sim)
+        df = load_stats(config, alg)
         # Concat runs
         df = pd.concat(df)
         # Filter for delivered and Normal packets
@@ -22,5 +23,7 @@ def analyze_hopcounts(algorithms, cstl, sim_name, runs_per_sim):
         named_dfs.append((alg, df))
 
     ########## Plot data ##########
-    file_name = f"hopcount-{cstl}-{sim_name}.cdf.pdf"
-    plot_cdf(named_dfs, "hops", file_name)
+    file_path = config.results_path.joinpath(
+        f"hopcount-{config.cstl}-{config.sim_name}.cdf.pdf"
+    )
+    plot_cdf(named_dfs, "hops", file_path)

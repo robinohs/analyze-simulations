@@ -104,18 +104,17 @@ def load_stats(alg: str, cstl: str, name: str, runs: int = 4) -> List[pd.DataFra
     dfs: List[pd.DataFrame] = []
     for run in range(0, runs):
         (stats_fp, _) = load_simulation_paths(alg, cstl, name, run)
-        print("Read:", stats_fp)
+        print("\t\t", "Read:", stats_fp)
         dfs.append(pd.read_csv(stats_fp))
     return dfs
 
 
 def plot_cdf(
     dfs: List[Tuple[str, pd.DataFrame]],
-    max_val,
     col: str,
-    file_name: str,
-    continuous=False,
+    file_name: str
 ):
+    print("\t", "Create plot...")
     fig = make_subplots()
     for name, df in dfs:
         stats_df = (
@@ -124,8 +123,8 @@ def plot_cdf(
             .pipe(pd.DataFrame)
             .rename(columns={col: "frequency"})
         )
-        if not continuous:
-            stats_df = stats_df.reindex(list(range(0, max_val + 1)), fill_value=0)
+        # if not continuous:
+        #     stats_df = stats_df.reindex(list(range(0, max_val + 1)), fill_value=0)
 
         stats_df["pdf"] = stats_df["frequency"] / sum(stats_df["frequency"])
 
@@ -144,11 +143,10 @@ def plot_cdf(
     fig.update_layout(
         legend=dict(yanchor="bottom", y=0.05, xanchor="right", x=0.95),
     )
-    print("Write to file")
+    print("\t", "Write plot to file...")
     fig.write_image(file_name, engine="kaleido")
-    # time.sleep(1)
-    # print("Write2")
-    # fig.write_image(file_name, engine="kaleido")
+    time.sleep(1)
+    fig.write_image(file_name, engine="kaleido")
 
 
 def get_route_dump_file(

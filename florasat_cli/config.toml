@@ -1,2 +1,3 @@
-routes_path = "./routes"
-results_path = "./results"
+routes_path = "/home/royal/simulations/routes"
+results_path = "/home/royal/simulations/results"
+runs = 4

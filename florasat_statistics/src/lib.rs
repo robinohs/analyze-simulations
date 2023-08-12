@@ -31,6 +31,7 @@ struct Hop {
     alt: u16,
 }
 
+#[pymethods]
 impl Hop {
     fn to_ecef(&self) -> (f64, f64, f64) {
         geodetic2ecef(

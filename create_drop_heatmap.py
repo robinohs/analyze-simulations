@@ -120,7 +120,7 @@ def create_drop_heatmap(algorithms, cstl, sim_name, runs_per_sim):
                     showlegend=False,
                     opacity=0.6,
                     marker=dict(
-                        size=dropped**(1/3),
+                        size=dropped ** (1 / 3),
                         symbol="circle",
                         color="red",
                     ),
@@ -150,33 +150,3 @@ def create_drop_heatmap(algorithms, cstl, sim_name, runs_per_sim):
         fig.write_image(file_name, engine="kaleido")
         time.sleep(1)
         fig.write_image(file_name, engine="kaleido")
-
-    # gs_df = pd.DataFrame(ground_stations)
-
-    # print("\t", "Create plot...")
-    # fig = go.Figure()
-
-    # # Add groundstations
-    # fig.add_trace(
-    #     go.Scattergeo(
-    #         lon=gs_df["lon"],
-    #         lat=gs_df["lat"],
-    #         text=gs_df["id"],
-    #         showlegend=False,
-    #         marker=dict(
-    #             size=5,
-    #             symbol="circle",
-    #             color="black",
-    #         ),
-    #     )
-    # )
-
-    # for (name, df) in named_dfs:
-    #     print(name)
-    #     print(df)
-
-    # print("\t", "Write plot to file...")
-    # file_name = f"traffic-topology-{cstl}-{sim_name}.map.pdf"
-    # fig.write_image(file_name, engine="kaleido")
-    # time.sleep(1)
-    # fig.write_image(file_name, engine="kaleido")

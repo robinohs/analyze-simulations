@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple
 
 @dataclass
 class Hop:
@@ -8,6 +8,12 @@ class Hop:
     lat: float
     lon: float
     alt: int
+
+    def to_ecef(self) -> Tuple[float, float ,float]:
+        pass
+
+    def distance(self, other: Hop) -> float:
+        pass
 
 @dataclass
 class Route:

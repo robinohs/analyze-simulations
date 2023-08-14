@@ -3,6 +3,7 @@ use std::{
     io::BufReader,
 };
 
+use csv::{DeserializeRecordsIter, Error};
 use itertools::Itertools;
 use map_3d::{deg2rad, geodetic2ecef};
 use pyo3::prelude::*;
@@ -76,13 +77,28 @@ fn load_routes(read_path: String) -> PyResult<Vec<Route>> {
 
 #[pyfunction]
 fn process_routes(read_path: String, write_path: String, write_file: String) -> PyResult<()> {
+    // read from file
     let file = File::open(read_path)?;
     let reader = BufReader::new(file);
     let mut rdr = csv::Reader::from_reader(reader);
-    let mut current_pid;
+    let iter = rdr.deserialize();
+
+    // transform
+    let routes = transform_routes(iter);
+
+    // write
+    let mut buf = Vec::new();
+    routes.serialize(&mut Serializer::new(&mut buf)).unwrap();
+    fs::create_dir_all(write_path)?;
+    fs::write(write_file, buf)?;
+
+    Ok(())
+}
+
+fn transform_routes(mut iter: impl Iterator<Item = Result<Record, Error>>) -> Vec<Route> {
     let mut routes = vec![];
     let mut hops = vec![];
-    let mut iter = rdr.deserialize();
+    let mut current_pid;
 
     // process first
     let first: Record = iter.next().unwrap().unwrap();
@@ -123,14 +139,7 @@ fn process_routes(read_path: String, write_path: String, write_file: String) -> 
         routes.push(route);
     }
 
-    let mut buf = Vec::new();
-    routes.serialize(&mut Serializer::new(&mut buf)).unwrap();
-
-    fs::create_dir_all(write_path)?;
-
-    fs::write(write_file, buf)?;
-
-    Ok(())
+    routes
 }
 
 fn calculate_distance(hops: &Vec<Hop>) -> u32 {
@@ -152,7 +161,60 @@ fn florasat_statistics(_py: Python, m: &PyModule) -> PyResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Hop, Route};
+    use stringreader::StringReader;
+
+    use crate::{transform_routes, Hop, Route};
+
+    #[test]
+    fn test_transform_routes() {
+        let streader = StringReader::new(
+            "pid,type,id,lat,lon,alt\n\
+        3182,G,0,-33.49,-70.74,0\n\
+        3182,S,16,-11.13,-69.91,786\n\
+        3182,S,15,21.72,-72.05,784\n\
+        3182,G,4,40.73,-73.94,0\n\
+        3198,G,4,40.73,-73.94,0\n\
+        3198,S,15,21.72,-72.05,784\n\
+        3198,S,16,-11.13,-69.91,786\n\
+        3198,G,0,-33.49,-70.74,0\n\
+        3185,G,3,49.23,7,0\n\
+        3185,S,45,38.11,16.57,786\n\
+        3185,S,46,5.3,19.05,784\n\
+        3185,S,47,-27.52,21.25,791\n\
+        3185,G,5,-33.92,18.42,0\n\
+        3216,G,4,40.73,-73.94,0\n\
+        3216,S,15,21.72,-72.05,784\n\
+        3216,S,4,49,-104.75,789\n\
+        3216,G,6,47.61,-122.34,0\n\
+        3188,G,6,47.61,-122.34,0\n\
+        3188,S,4,49,-104.75,789\n\
+        3188,S,15,21.72,-72.05,784\n\
+        3188,S,16,-11.13,-69.91,786\n\
+        3188,G,0,-33.49,-70.74,0\n\
+        3218,G,0,-33.49,-70.74,0\n\
+        3218,S,16,-11.13,-69.91,786\n\
+        3218,S,15,21.72,-72.05,784\n\
+        3218,G,4,40.73,-73.94,0\n\
+        3204,G,2,35.65,139.84,0\n\
+        3204,S,32,21.84,140.82,784\n\
+        3204,S,31,-11.01,138.68,786\n\
+        3204,S,30,-43.73,135.95,798\n\
+        3204,G,1,-33.87,151.21,0\n\
+        3208,G,5,-33.92,18.42,0\n\
+        3208,S,47,-27.52,21.25,791\n\
+        3208,S,46,5.3,19.05,784\n\
+        3208,S,45,38.11,16.57,786\n\
+        3208,G,3,49.23,7,0\n\
+        ",
+        );
+        let mut rdr = csv::Reader::from_reader(streader);
+        let iter = rdr.deserialize();
+
+        // transform
+        let routes = transform_routes(iter);
+
+        println!("{:?}", routes)
+    }
 
     #[test]
     fn test_calc_distance() {

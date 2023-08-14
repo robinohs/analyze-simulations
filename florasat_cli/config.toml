@@ -1,4 +1,0 @@
-florasat_results_path = "~/omnetpp-6.0.1/samples/florasat/simulations/routing/results"
-routes_path = "./routes"
-results_path = "./results"
-runs = 4

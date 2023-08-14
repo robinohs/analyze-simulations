@@ -20,3 +20,6 @@ serde = { version = "1.0.183", features = ["serde_derive"] }
 [profile.dev]
 opt-level = 3
 overflow-checks = false
+
+[dev-dependencies]
+stringreader = "0.1.1"

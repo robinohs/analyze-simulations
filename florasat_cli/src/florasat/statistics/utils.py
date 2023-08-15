@@ -65,13 +65,15 @@ def load_stats(
 
 
 def fix_loading_mathjax():
-    #garbage graph
+    # garbage graph
     fig = px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
     fig.write_image("/tmp/fix-mathjax.pdf", engine="kaleido")
     time.sleep(1)
 
 
-def plot_cdf(dfs: List[Tuple[str, pd.DataFrame]], col: str, file_path: Path, x_name: str = ""):
+def plot_cdf(
+    dfs: List[Tuple[str, pd.DataFrame]], col: str, file_path: Path, x_name: str = ""
+):
     print("\t", "Create plot...")
     fig = make_subplots()
     for name, df in dfs:
@@ -102,7 +104,7 @@ def plot_cdf(dfs: List[Tuple[str, pd.DataFrame]], col: str, file_path: Path, x_n
         legend=dict(yanchor="bottom", y=0.05, xanchor="right", x=0.95),
     )
     fig.update_xaxes(title_text=x_name, tickmode="auto", nticks=10)
-    fig.update_yaxes(title_text='CDF')
+    fig.update_yaxes(title_text="CDF", dtick=0.1)
     print("\t", "Write plot to file...")
     fix_loading_mathjax()
     fig.write_image(file_path, engine="kaleido")

@@ -75,7 +75,7 @@ def analyze_packetloss(config: Config):
                 legend=dict(yanchor="top", y=0.95, xanchor="left", x=0.05),
             )
             fig.update_xaxes(title_text="Time (s)", nticks=10)
-            fig.update_yaxes(title_text='Packetloss [%]')
+            fig.update_yaxes(title_text='Packetloss [%]', dtick=0.1)
             print("\t", "Write plot to file...")
             file_path = config.results_path.joinpath(cstl).joinpath(sim_name)
             os.makedirs(file_path, exist_ok=True)

@@ -1,7 +1,7 @@
 import os
 from typing import List, Tuple
 import pandas as pd
-import florasat_statistics
+from florasat_statistics import load_routes
 
 from florasat.statistics.utils import (
     Config,
@@ -20,7 +20,7 @@ def analyze_distances(config: Config):
                 # Load all runs
                 run_dfs = []
                 for run in range(0, config.runs):
-                    (stats_path, _) = load_simulation_paths(
+                    (stats_path, _, _) = load_simulation_paths(
                         config, cstl, sim_name, alg, run
                     )
                     (_, file_path) = get_route_dump_file(
@@ -28,7 +28,7 @@ def analyze_distances(config: Config):
                     )
 
                     print("\t", "Load", file_path)
-                    routes = florasat_statistics.load_routes(str(file_path))
+                    routes = load_routes(str(file_path))
                     distances = list(map(lambda r: r.length, routes))
 
                     print("\t", "Load stats dataframe")

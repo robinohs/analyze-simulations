@@ -73,6 +73,7 @@ def analyze_packetloss(config: Config):
             fig.update_traces(line=dict(width=2), marker=dict(size=2))
             fig.update_layout(
                 legend=dict(yanchor="top", y=0.95, xanchor="left", x=0.05),
+                yaxis_range=[0, 1]
             )
             fig.update_xaxes(title_text="Time (s)", nticks=10)
             fig.update_yaxes(title_text='Packetloss [%]', dtick=0.1)

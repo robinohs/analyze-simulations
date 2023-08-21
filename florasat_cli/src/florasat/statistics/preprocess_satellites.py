@@ -1,7 +1,8 @@
-from florasat.statistics.utils import Config, get_route_dump_file, load_simulation_paths
-from florasat_statistics import process_routes
+from florasat.statistics.utils import Config, get_sats_dump_file, load_simulation_paths
+from florasat_statistics import process_sat_stats
 
-def preprocess_routes(config: Config):
+
+def preprocess_satellites(config: Config):
     ########### load data ##########
     for cstl in config.cstl:
         for sim_name in config.sim_name:
@@ -9,15 +10,13 @@ def preprocess_routes(config: Config):
                 print("\t", f"Preprocess routes for {alg}/{cstl}/{sim_name}...")
                 for run in range(0, config.runs):
                     # load and process routes
-                    (_, routes_fp, _) = load_simulation_paths(
+                    (_, _, sats_fp) = load_simulation_paths(
                         config, cstl, sim_name, alg, run
                     )
-                    (path, file_path) = get_route_dump_file(
+                    (path, file_path) = get_sats_dump_file(
                         config, cstl, sim_name, alg, run
                     )
-                    print("\t", "\t", "Read + Convert:", routes_fp)
+                    print("\t", "\t", "Read + Convert:", sats_fp)
                     print("\t", "\t", "-> Dump to:", file_path)
                     # Call Rust library function
-                    process_routes(
-                        str(routes_fp), str(path), str(file_path)
-                    )
+                    process_sat_stats(str(sats_fp), str(file_path))

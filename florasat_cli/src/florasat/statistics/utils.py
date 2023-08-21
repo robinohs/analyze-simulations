@@ -19,16 +19,17 @@ class Config:
     runs: int
     florasat_results_path: Path
     routes_path: Path
+    satellites_path: Path
     results_path: Path
 
 
 def load_simulation_paths(
     config: Config, cstl: str, sim_name: str, alg: str, run: int
-) -> Tuple[Path, Path]:
+) -> Tuple[Path, Path, Path]:
     path_directory = (
         config.florasat_results_path.joinpath(alg).joinpath(cstl).joinpath(sim_name)
     )
-    print("\t", "Load", path_directory)
+    print("\t", "Load run", run, "from", path_directory)
     content_dir: List[str] = os.listdir(path_directory)
 
     stats_file_name = f"{run}.stats.csv"
@@ -37,12 +38,15 @@ def load_simulation_paths(
     routes_file_name = f"{run}.routes.csv"
     routes_file_path = path_directory.joinpath(routes_file_name)
 
-    if not stats_file_name or not routes_file_name in content_dir:
+    sats_file_name = f"{run}.sats.csv"
+    sats_file_path = path_directory.joinpath(sats_file_name)
+
+    if not stats_file_name in content_dir or not routes_file_name in content_dir or not sats_file_name in content_dir:
         raise FileNotFoundError(
-            f"Could not find {stats_file_name} or {routes_file_name} in {path_directory}"
+            f"Could not find {stats_file_name} or {routes_file_name} or {sats_file_name} in {path_directory}"
         )
 
-    return (stats_file_path, routes_file_path)
+    return (stats_file_path, routes_file_path, sats_file_path)
 
 
 def get_route_dump_file(
@@ -53,12 +57,20 @@ def get_route_dump_file(
     return (path, file_path)
 
 
+def get_sats_dump_file(
+    config: Config, cstl: str, sim_name: str, alg: str, run: int
+) -> Tuple[Path, Path]:
+    path = config.satellites_path.joinpath(alg).joinpath(cstl).joinpath(sim_name)
+    file_path = path.joinpath(f"{run}.sats.msgpack")
+    return (path, file_path)
+
+
 def load_stats(
     config: Config, cstl: str, sim_name: str, alg: str
 ) -> List[pd.DataFrame]:
     dfs: List[pd.DataFrame] = []
     for run in range(0, config.runs):
-        (stats_fp, _) = load_simulation_paths(config, cstl, sim_name, alg, run)
+        (stats_fp, _, _) = load_simulation_paths(config, cstl, sim_name, alg, run)
         print("\t\t", "Read:", stats_fp)
         dfs.append(pd.read_csv(stats_fp))
     return dfs

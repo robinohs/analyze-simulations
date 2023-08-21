@@ -12,6 +12,8 @@ from florasat.statistics.preprocess_routes import preprocess_routes
 from florasat.statistics.create_drop_heatmap import create_drop_heatmap
 from florasat.statistics.analyze_e2edelay import analyze_e2edelay
 from florasat.statistics import utils
+from florasat.statistics.preprocess_satellites import preprocess_satellites
+from florasat.statistics.analyze_queues import analyze_queues
 
 config_name = ".florasat_config.toml"
 
@@ -81,6 +83,14 @@ def generate_statistics_subparser(subparsers):
     )
 
     stats_parser.add_argument(
+        "--satellites",
+        help="Path to read/store pre-processed satellite states. If not specified, loaded from config.",
+        dest="satellites_path",
+        type=str,
+        required=False,
+    )
+
+    stats_parser.add_argument(
         "--results",
         help="Path to read/store results. If not specified, loaded from config.",
         dest="results_path",
@@ -92,6 +102,14 @@ def generate_statistics_subparser(subparsers):
         "--preprocess-routes",
         help="Preprocess routes",
         dest="f_preprocess_routes",
+        action="store_true",
+        required=False,
+    )
+
+    stats_parser.add_argument(
+        "--preprocess-satellites",
+        help="Preprocess satellite states",
+        dest="f_preprocess_satellites",
         action="store_true",
         required=False,
     )
@@ -145,6 +163,14 @@ def generate_statistics_subparser(subparsers):
     )
 
     stats_parser.add_argument(
+        "--queue-sizes",
+        help="Generate queue sizes comparison graph",
+        dest="f_queue_sizes",
+        action="store_true",
+        required=False,
+    )
+
+    stats_parser.add_argument(
         "--all",
         help="Generate all statistics",
         dest="f_all",
@@ -158,6 +184,7 @@ def handle_run(args):
     if (
         args.florasat_results_path is None
         or args.routes_path is None
+        or args.satellites_path is None
         or args.results_path is None
         or args.runs is None
     ):
@@ -186,6 +213,19 @@ def handle_run(args):
                 args.routes_path = path
             except KeyError:
                 print(f"X Could not find a value for 'routes_path' in config file.")
+                sys.exit(1)
+            except OSError as e:
+                print(f"X Failed:", e)
+                sys.exit(1)
+
+        if args.satellites_path is None:
+            try:
+                path = Path(config["satellites_path"])
+                if not path.is_dir():
+                    os.makedirs(path, exist_ok=True)
+                args.satellites_path = path
+            except KeyError:
+                print(f"X Could not find a value for 'satellites_path' in config file.")
                 sys.exit(1)
             except OSError as e:
                 print(f"X Failed:", e)
@@ -222,6 +262,7 @@ def handle_run(args):
         args.f_drop_heatmap = True
         args.f_e2e_delay_cdf = True
         args.f_compare_delay = True
+        args.f_queue_sizes = True
 
     print("")
 
@@ -232,14 +273,17 @@ def handle_run(args):
     print("-> Runs:", "\t", "\t", "\t", args.runs)
     print("-> FLoRaSat result path:", "\t", args.florasat_results_path)
     print("-> Routes path:", "\t", "\t", args.routes_path)
+    print("-> Satellites path:", "\t", "\t", args.satellites_path)
     print("-> Results path:", "\t", "\t", args.results_path)
     print("-> Preprocess routes:", "\t", "\t", args.f_preprocess_routes)
+    print("-> Preprocess satellites:", "\t", args.f_preprocess_satellites)
     print("-> Gen. hops CDF:", "\t", "\t", args.f_hops)
     print("-> Gen. distance CDF:", "\t", "\t", args.f_distances)
     print("-> Gen. packetloss graph:", "\t", args.f_packetloss)
     print("-> Gen. drop heatmap:", "\t", "\t", args.f_drop_heatmap)
     print("-> Gen. E2E delay CDF:", "\t", "\t", args.f_e2e_delay_cdf)
     print("-> Gen. delay comparison graph:\t", args.f_compare_delay)
+    print("-> Gen. queue sizes graph:\t", args.f_queue_sizes)
 
     # Validation
     print("")
@@ -249,12 +293,14 @@ def handle_run(args):
 
     if (
         not args.f_preprocess_routes
+        and not args.f_preprocess_satellites
         and not args.f_hops
         and not args.f_distances
         and not args.f_packetloss
         and not args.f_drop_heatmap
         and not args.f_e2e_delay_cdf
         and not args.f_compare_delay
+        and not args.f_queue_sizes
     ):
         print("")
         print("Nothing to do...")
@@ -267,6 +313,7 @@ def handle_run(args):
         args.runs,
         args.florasat_results_path,
         args.routes_path,
+        args.satellites_path,
         args.results_path,
     )
 
@@ -277,6 +324,15 @@ def handle_run(args):
             preprocess_routes(stats_config)
         except FileNotFoundError as e:
             print("X Failed to preprocess routes. Could not find:", e.filename)
+            sys.exit(1)
+
+    if args.f_preprocess_satellites:
+        print("")
+        print("Preprocess satellites...")
+        try:
+            preprocess_satellites(stats_config)
+        except FileNotFoundError as e:
+            print("X Failed to preprocess satellites. Could not find:", e.filename)
             sys.exit(1)
 
     if args.f_hops:
@@ -321,6 +377,18 @@ def handle_run(args):
             )
             sys.exit(1)
 
+    if args.f_queue_sizes:
+        print("")
+        print("Run queue size graph generation...")
+        try:
+            analyze_queues(stats_config)
+        except FileNotFoundError as e:
+            print("X Failed to generate queue size graph. Could not find:", e.filename)
+            print(
+                "Are satellite states preprocessed? This is required once after FLoRaSat simulation runs."
+            )
+            sys.exit(1)
+
     if args.f_e2e_delay_cdf:
         print("")
         print("Run E2E delay CDF generation...")
@@ -336,7 +404,10 @@ def handle_run(args):
         try:
             compare_delays(stats_config)
         except FileNotFoundError as e:
-            print("X Failed to generate delay comparison graph. Could not find:", e.filename)
+            print(
+                "X Failed to generate delay comparison graph. Could not find:",
+                e.filename,
+            )
             sys.exit(1)
 
 

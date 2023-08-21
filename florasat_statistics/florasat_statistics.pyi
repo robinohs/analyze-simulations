@@ -25,3 +25,19 @@ def load_routes(read_path: str) -> List[Route]:
 
 def process_routes(routes_fp: str, path: str, file_path: str):
     pass
+
+@dataclass
+class Satellite:
+    sat_id: int
+    entries: List[State]
+
+@dataclass
+class State:
+    to: float
+    qs: int
+
+def load_sat_stats(read_path: str) -> List[Satellite]:
+    pass
+
+def process_sat_stats(routes_fp: str, file_path: str):
+    pass

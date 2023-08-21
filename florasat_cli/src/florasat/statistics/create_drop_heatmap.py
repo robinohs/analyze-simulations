@@ -4,9 +4,14 @@ import time
 from typing import List
 import pandas as pd
 import plotly.graph_objects as go
-import florasat_statistics
+from florasat_statistics import load_routes
 
-from florasat.statistics.utils import Config, get_route_dump_file, load_simulation_paths, fix_loading_mathjax
+from florasat.statistics.utils import (
+    Config,
+    get_route_dump_file,
+    load_simulation_paths,
+    fix_loading_mathjax,
+)
 
 
 @dataclass
@@ -69,7 +74,7 @@ def create_drop_heatmap(config: Config):
                 # get groundstations that were involved in traffic
                 run_dfs = []
                 for run in range(0, config.runs):
-                    (stats_fp, _) = load_simulation_paths(
+                    (stats_fp, _, _) = load_simulation_paths(
                         config, cstl, sim_name, alg, run
                     )
                     df = pd.read_csv(stats_fp)
@@ -79,7 +84,7 @@ def create_drop_heatmap(config: Config):
                     )
 
                     print("\t", "Load", file_path)
-                    routes = florasat_statistics.load_routes(str(file_path))
+                    routes = load_routes(str(file_path))
 
                     print("\t", "Get ground stations...")
                     for r in routes:

@@ -82,6 +82,13 @@ def fix_loading_mathjax():
     fig.write_image("/tmp/fix-mathjax.pdf", engine="kaleido")
     time.sleep(1)
 
+def apply_default(fig, size=22):
+    fix_loading_mathjax()
+    fig.update_layout(
+        margin=dict(l=10,r=10,b=10,t=10),
+        font=dict(size=size),
+    )
+
 
 def plot_cdf(
     dfs: List[Tuple[str, pd.DataFrame]], col: str, file_path: Path, x_name: str = ""
@@ -115,8 +122,8 @@ def plot_cdf(
     fig.update_layout(
         legend=dict(yanchor="bottom", y=0.05, xanchor="right", x=0.95),
     )
+    apply_default(fig)
     fig.update_xaxes(title_text=x_name, tickmode="auto", nticks=10)
     fig.update_yaxes(title_text="CDF", dtick=0.1)
     print("\t", "Write plot to file...")
-    fix_loading_mathjax()
     fig.write_image(file_path, engine="kaleido")

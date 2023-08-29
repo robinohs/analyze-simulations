@@ -3,9 +3,8 @@ import time
 from typing import List, Tuple
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 
-from florasat.statistics.utils import Config, load_stats, fix_loading_mathjax
+from florasat.statistics.utils import Config, apply_default, load_stats
 
 
 def compare_delays(config: Config):
@@ -38,16 +37,18 @@ def compare_delays(config: Config):
                 fig = go.Figure()
 
                 for name, df in named_dfs:
-                    fig.add_trace(go.Box(x=df[delay].values, boxpoints=False, name=name))
+                    fig.add_trace(
+                        go.Box(x=df[delay].values, boxpoints=False, name=name)
+                    )
 
                 # generate plot
                 fig.update_xaxes(title_text="Delay [ms]", nticks=20)
-                fig.update_layout(showlegend = False)
+                fig.update_layout(showlegend=False)
 
                 # write plot to file
                 file_path = config.results_path.joinpath(cstl).joinpath(sim_name)
                 os.makedirs(file_path, exist_ok=True)
                 file_path = file_path.joinpath(f"compare-{delay}.pdf")
                 print("\t", "Write plot to file", file_path)
-                fix_loading_mathjax()
+                apply_default(fig)
                 fig.write_image(file_path, engine="kaleido")

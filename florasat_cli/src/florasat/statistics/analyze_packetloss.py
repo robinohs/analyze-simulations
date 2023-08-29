@@ -5,7 +5,7 @@ import pandas as pd
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
-from florasat.statistics.utils import Config, load_stats, fix_loading_mathjax
+from florasat.statistics.utils import Config, apply_default, load_stats
 
 
 def analyze_packetloss(config: Config):
@@ -81,5 +81,5 @@ def analyze_packetloss(config: Config):
             file_path = config.results_path.joinpath(cstl).joinpath(sim_name)
             os.makedirs(file_path, exist_ok=True)
             file_path = file_path.joinpath(f"packetloss.sum.pdf")
-            fix_loading_mathjax()
+            apply_default(fig)
             fig.write_image(file_path, engine="kaleido")

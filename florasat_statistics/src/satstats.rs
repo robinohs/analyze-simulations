@@ -28,7 +28,7 @@ pub struct Satellite {
 #[pyclass(module = "state", get_all)]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct State {
-    to: f32,
+    start: f32,
     qs: u32,
 }
 
@@ -79,14 +79,13 @@ fn transform_satstats(iter: impl Iterator<Item = Result<Record, Error>>) -> Vec<
 
         let sat = satellite_states.entry(id).or_insert(Satellite {
             sat_id: id,
-            entries: vec![],
+            entries: vec![State { start: 0.0, qs: 0 }],
         });
 
-        
         let mut i = (*old_timestamp).round() + 5.0;
         while i < timestamp {
             let state = State {
-                to: i,
+                start: i,
                 qs: *old_queue_size,
             };
             sat.entries.push(state);
@@ -94,7 +93,7 @@ fn transform_satstats(iter: impl Iterator<Item = Result<Record, Error>>) -> Vec<
         }
 
         let state = State {
-            to: timestamp,
+            start: timestamp,
             qs: queue_size,
         };
         sat.entries.push(state);

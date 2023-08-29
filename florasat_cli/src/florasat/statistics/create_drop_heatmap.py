@@ -8,9 +8,9 @@ from florasat_statistics import load_routes
 
 from florasat.statistics.utils import (
     Config,
+    apply_default,
     get_route_dump_file,
     load_simulation_paths,
-    fix_loading_mathjax,
 )
 
 
@@ -20,49 +20,6 @@ class Groundstation:
     lat: float
     lon: float
     alt: int
-
-
-# def calculate_between_coordinates(
-#     p1: Tuple[float, float], p2: Tuple[float, float]
-# ) -> Tuple[float, float]:
-#     (src_lat, src_lon) = p1
-#     (dst_lat, dst_lon) = p2
-
-#     # calc middle lat
-#     lower_lat, upper_lat = (
-#         (src_lat + 90, dst_lat + 90)
-#         if src_lat < dst_lat
-#         else (dst_lat + 90, src_lat + 90)
-#     )
-#     # print(lower_lat, upper_lat)
-#     lat_distance_inner = upper_lat - lower_lat
-#     lat_distance_outer = lower_lat + 180 - upper_lat
-#     assert lat_distance_inner + lat_distance_outer == 180
-
-#     if lat_distance_inner < lat_distance_outer:
-#         m_lat = lower_lat + lat_distance_inner / 2 - 90
-#     else:
-#         m_lat = (lower_lat - upper_lat / 2) - 90
-#     print(lower_lat - 90, upper_lat - 90)
-#     print(m_lat)
-
-#     # calc middle lon
-#     left_lon, right_lon = (
-#         (src_lon + 180, dst_lon + 180)
-#         if src_lon < dst_lon
-#         else (dst_lon + 180, src_lon + 180)
-#     )
-#     lon_distance_inner = right_lon - left_lon
-#     lon_distance_outer = left_lon + 360 - right_lon
-#     assert lon_distance_inner + lon_distance_outer == 360
-
-#     if lon_distance_inner < lon_distance_outer:
-#         m_lon = (left_lon + lon_distance_inner / 2) - 180
-#     else:
-#         m_lon = (left_lon - lon_distance_outer / 2) - 180
-#     print(left_lon - 180, right_lon - 180)
-#     print(m_lon)
-#     return (m_lat, m_lon)
 
 
 def create_drop_heatmap(config: Config):
@@ -157,5 +114,5 @@ def create_drop_heatmap(config: Config):
                 file_path = config.results_path.joinpath(cstl).joinpath(sim_name)
                 os.makedirs(file_path, exist_ok=True)
                 file_path = file_path.joinpath(f"{alg}-dropspots.map.pdf")
-                fix_loading_mathjax()
+                apply_default(fig)
                 fig.write_image(file_path, engine="kaleido")

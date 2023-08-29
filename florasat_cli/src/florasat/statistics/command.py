@@ -14,6 +14,7 @@ from florasat.statistics.analyze_e2edelay import analyze_e2edelay
 from florasat.statistics import utils
 from florasat.statistics.preprocess_satellites import preprocess_satellites
 from florasat.statistics.analyze_queues import analyze_queues
+from florasat.statistics.analyze_throughput import analyze_throughput
 
 config_name = ".florasat_config.toml"
 
@@ -171,6 +172,14 @@ def generate_statistics_subparser(subparsers):
     )
 
     stats_parser.add_argument(
+        "--throughput",
+        help="Generate throughput comparison graph",
+        dest="f_throughput",
+        action="store_true",
+        required=False,
+    )
+
+    stats_parser.add_argument(
         "--all",
         help="Generate all statistics",
         dest="f_all",
@@ -263,6 +272,7 @@ def handle_run(args):
         args.f_e2e_delay_cdf = True
         args.f_compare_delay = True
         args.f_queue_sizes = True
+        args.f_throughput = True
 
     print("")
 
@@ -284,6 +294,7 @@ def handle_run(args):
     print("-> Gen. E2E delay CDF:", "\t", "\t", args.f_e2e_delay_cdf)
     print("-> Gen. delay comparison graph:\t", args.f_compare_delay)
     print("-> Gen. queue sizes graph:\t", args.f_queue_sizes)
+    print("-> Gen. throughput graph:\t", args.f_throughput)
 
     # Validation
     print("")
@@ -301,6 +312,7 @@ def handle_run(args):
         and not args.f_e2e_delay_cdf
         and not args.f_compare_delay
         and not args.f_queue_sizes
+        and not args.f_throughput
     ):
         print("")
         print("Nothing to do...")
@@ -406,6 +418,18 @@ def handle_run(args):
         except FileNotFoundError as e:
             print(
                 "X Failed to generate delay comparison graph. Could not find:",
+                e.filename,
+            )
+            sys.exit(1)
+
+    if args.f_throughput:
+        print("")
+        print("Run analyze throughput graph generation...")
+        try:
+            analyze_throughput(stats_config)
+        except FileNotFoundError as e:
+            print(
+                "X Failed to generate analyze throughput graph. Could not find:",
                 e.filename,
             )
             sys.exit(1)

@@ -33,7 +33,7 @@ class Satellite:
 
 @dataclass
 class State:
-    to: float
+    start: float
     qs: int
 
 def load_sat_stats(read_path: str) -> List[Satellite]:

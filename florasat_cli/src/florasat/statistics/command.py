@@ -16,7 +16,6 @@ from florasat.statistics.preprocess_satellites import preprocess_satellites
 from florasat.statistics.analyze_queues import analyze_queues
 from florasat.statistics.analyze_throughput import analyze_throughput
 
-config_name = ".florasat_config.toml"
 
 
 def generate_statistics_subparser(subparsers):
@@ -197,7 +196,7 @@ def handle_run(args):
         or args.results_path is None
         or args.runs is None
     ):
-        config = __load_config(args.config_path)
+        config = utils.load_config(args.config_path)
 
         if args.florasat_results_path is None:
             try:
@@ -435,38 +434,3 @@ def handle_run(args):
             sys.exit(1)
 
 
-def __load_config(path_raw: str | None) -> dict[str, Any]:
-    xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
-    home = os.environ.get("HOME")
-    if path_raw is not None:
-        print(f"Try to load config from {path_raw}...")
-        path = Path(path_raw)
-        if not (path.exists() and path.is_file()):
-            raise RuntimeError(
-                f"Could not load config: {path} does not exists or is no file."
-            )
-        with open(path, "rb") as file:
-            config = tomli.load(file)
-            return config
-    elif xdg_config_home is not None:
-        print("Try to load config from $XDG_CONFIG_HOME...")
-        path = Path(xdg_config_home).joinpath(config_name)
-        if not (path.exists() and path.is_file()):
-            raise RuntimeError(
-                f"Could not load config: {path} does not exists or is no file."
-            )
-        with open(path, "rb") as file:
-            config = tomli.load(file)
-            return config
-    elif home is not None:
-        print("Try to load config from $HOME...")
-        path = Path(home).joinpath(config_name)
-        if not (path.exists() and path.is_file()):
-            raise RuntimeError(
-                f"Could not load config: {path} does not exists or is no file."
-            )
-        with open(path, "rb") as file:
-            config = tomli.load(file)
-            return config
-    else:
-        raise RuntimeError("Neither $XDG_CONFIG_HOME or $HOME are set")

@@ -3,10 +3,13 @@ import os
 from pathlib import Path
 import time
 import pandas as pd
-from typing import List, Tuple
+from typing import Any, List, Tuple
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import plotly.express as px
+import tomli
+
+config_name = ".florasat_config.toml"
 
 pd.options.plotting.backend = "plotly"
 
@@ -41,7 +44,11 @@ def load_simulation_paths(
     sats_file_name = f"{run}.sats.csv"
     sats_file_path = path_directory.joinpath(sats_file_name)
 
-    if not stats_file_name in content_dir or not routes_file_name in content_dir or not sats_file_name in content_dir:
+    if (
+        not stats_file_name in content_dir
+        or not routes_file_name in content_dir
+        or not sats_file_name in content_dir
+    ):
         raise FileNotFoundError(
             f"Could not find {stats_file_name} or {routes_file_name} or {sats_file_name} in {path_directory}"
         )
@@ -82,10 +89,11 @@ def fix_loading_mathjax():
     fig.write_image("/tmp/fix-mathjax.pdf", engine="kaleido")
     time.sleep(1)
 
+
 def apply_default(fig, size=22):
     fix_loading_mathjax()
     fig.update_layout(
-        margin=dict(l=10,r=10,b=10,t=10),
+        margin=dict(l=10, r=10, b=10, t=10),
         font=dict(size=size),
     )
 
@@ -127,3 +135,40 @@ def plot_cdf(
     fig.update_yaxes(title_text="CDF", dtick=0.1)
     print("\t", "Write plot to file...")
     fig.write_image(file_path, engine="kaleido")
+
+
+def load_config(path_raw: str | None = None) -> dict[str, Any]:
+    xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
+    home = os.environ.get("HOME")
+    if path_raw is not None:
+        print(f"Try to load config from {path_raw}...")
+        path = Path(path_raw)
+        if not (path.exists() and path.is_file()):
+            raise RuntimeError(
+                f"Could not load config: {path} does not exists or is no file."
+            )
+        with open(path, "rb") as file:
+            config = tomli.load(file)
+            return config
+    elif xdg_config_home is not None:
+        print("Try to load config from $XDG_CONFIG_HOME...")
+        path = Path(xdg_config_home).joinpath(config_name)
+        if not (path.exists() and path.is_file()):
+            raise RuntimeError(
+                f"Could not load config: {path} does not exists or is no file."
+            )
+        with open(path, "rb") as file:
+            config = tomli.load(file)
+            return config
+    elif home is not None:
+        print("Try to load config from $HOME...")
+        path = Path(home).joinpath(config_name)
+        if not (path.exists() and path.is_file()):
+            raise RuntimeError(
+                f"Could not load config: {path} does not exists or is no file."
+            )
+        with open(path, "rb") as file:
+            config = tomli.load(file)
+            return config
+    else:
+        raise RuntimeError("Neither $XDG_CONFIG_HOME or $HOME are set")

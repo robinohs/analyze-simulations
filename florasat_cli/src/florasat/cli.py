@@ -3,6 +3,7 @@ import pathlib
 
 import florasat.config.command as config_command
 import florasat.statistics.command as statistics_command
+import florasat.scenario.command as scenario_command
 
 
 def generate_parser() -> argparse.ArgumentParser:
@@ -12,6 +13,7 @@ def generate_parser() -> argparse.ArgumentParser:
     )
     config_command.generate_config_subparser(subparsers)
     statistics_command.generate_statistics_subparser(subparsers)
+    scenario_command.generate_scenario_subparser(subparsers)
     return parser
 
 
@@ -23,5 +25,7 @@ def run_command(args):
             statistics_command.handle_run(args)
         case "config":
             config_command.handle_run(args)
+        case "scenario":
+            scenario_command.handle_run(args)
         case cmd:
             raise RuntimeError(f"Unrecognized command: {cmd}")

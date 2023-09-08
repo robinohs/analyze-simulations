@@ -15,7 +15,9 @@ from florasat.statistics import utils
 from florasat.statistics.preprocess_satellites import preprocess_satellites
 from florasat.statistics.analyze_queues import analyze_queues
 from florasat.statistics.analyze_throughput import analyze_throughput
-
+from florasat.statistics.paramstudy_altitude import paramstudy_altitude
+from florasat.statistics.paramstudy_inclination import paramstudy_inclination
+from florasat.statistics.paramstudy_datarate import paramstudy_datarate
 
 
 def generate_statistics_subparser(subparsers):
@@ -186,6 +188,30 @@ def generate_statistics_subparser(subparsers):
         required=False,
     )
 
+    stats_parser.add_argument(
+        "--paramstudy-altitude",
+        help="Generate paramstudy altitude",
+        dest="f_paramstudy_altitude",
+        action="store_true",
+        required=False,
+    )
+
+    stats_parser.add_argument(
+        "--paramstudy-inclination",
+        help="Generate paramstudy inclination",
+        dest="f_paramstudy_inclination",
+        action="store_true",
+        required=False,
+    )
+
+    stats_parser.add_argument(
+        "--paramstudy-datarate",
+        help="Generate paramstudy datarate",
+        dest="f_paramstudy_datarate",
+        action="store_true",
+        required=False,
+    )
+
 
 def handle_run(args):
     # load config if required value was not set in CLI
@@ -294,6 +320,9 @@ def handle_run(args):
     print("-> Gen. delay comparison graph:\t", args.f_compare_delay)
     print("-> Gen. queue sizes graph:\t", args.f_queue_sizes)
     print("-> Gen. throughput graph:\t", args.f_throughput)
+    print("-> Gen. paramstudy altitude:\t", args.f_paramstudy_altitude)
+    print("-> Gen. paramstudy inclination:\t", args.f_paramstudy_inclination)
+    print("-> Gen. paramstudy datarate:\t", args.f_paramstudy_datarate)
 
     # Validation
     print("")
@@ -312,6 +341,9 @@ def handle_run(args):
         and not args.f_compare_delay
         and not args.f_queue_sizes
         and not args.f_throughput
+        and not args.f_paramstudy_altitude
+        and not args.f_paramstudy_inclination
+        and not args.f_paramstudy_datarate
     ):
         print("")
         print("Nothing to do...")
@@ -433,4 +465,45 @@ def handle_run(args):
             )
             sys.exit(1)
 
+    if args.f_paramstudy_altitude:
+        print("")
+        print("Run paramstudy altitude graph generation...")
+        try:
+            paramstudy_altitude(stats_config)
+        except FileNotFoundError as e:
+            print(
+                "X Failed to generate paramstudy altitude. Could not find:", e.filename
+            )
+            print(
+                "Are satellite states preprocessed? This is required once after FLoRaSat simulation runs."
+            )
+            sys.exit(1)
 
+    if args.f_paramstudy_inclination:
+        print("")
+        print("Run paramstudy inclination graph generation...")
+        try:
+            paramstudy_inclination(stats_config)
+        except FileNotFoundError as e:
+            print(
+                "X Failed to generate paramstudy inclination. Could not find:",
+                e.filename,
+            )
+            print(
+                "Are satellite states preprocessed? This is required once after FLoRaSat simulation runs."
+            )
+            sys.exit(1)
+
+    if args.f_paramstudy_datarate:
+        print("")
+        print("Run paramstudy datarate graph generation...")
+        try:
+            paramstudy_datarate(stats_config)
+        except FileNotFoundError as e:
+            print(
+                "X Failed to generate paramstudy datarate. Could not find:", e.filename
+            )
+            print(
+                "Are satellite states preprocessed? This is required once after FLoRaSat simulation runs."
+            )
+            sys.exit(1)

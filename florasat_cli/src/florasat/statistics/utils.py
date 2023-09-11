@@ -93,8 +93,7 @@ def fix_loading_mathjax():
 def apply_default(fig, size=22):
     fix_loading_mathjax()
     fig.update_layout(
-        margin=dict(l=10, r=10, b=10, t=10),
-        font=dict(size=size),
+        margin=dict(l=10, r=10, b=10, t=10), font=dict(size=size), width=600, height=400
     )
 
 

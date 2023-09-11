@@ -24,6 +24,8 @@ def analyze_hopcounts(config: Config):
                 # add to data
                 named_dfs.append((alg, df))
 
+                print(df["hops"].max())
+
             ########## Plot data ##########
             file_path = config.results_path.joinpath(cstl).joinpath(sim_name)
             os.makedirs(file_path, exist_ok=True)

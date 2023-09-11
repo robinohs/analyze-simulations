@@ -56,6 +56,8 @@ def analyze_packetloss(config: Config):
                 combined["sum"] = combined["sum_recvd"] + combined["sum_dropped"]
                 combined["ratio_dropped"] = combined["sum_dropped"] / combined["sum"]
 
+                print(combined)
+
                 processed_dfs.append((name, combined))
 
             ########## Plot data ##########

@@ -1,3 +1,4 @@
+import datetime
 import os
 from typing import List
 from florasat_statistics import load_routes, load_sat_stats
@@ -6,6 +7,7 @@ import pandas as pd
 from florasat.statistics.utils import (
     Config,
     apply_default,
+    get_sats_dump_file,
     load_simulation_paths,
 )
 import plotly.express as px
@@ -13,31 +15,63 @@ import plotly.graph_objects as go
 
 
 def paramstudy_datarate(config: Config):
-    fig_distance = go.Figure()
+    start = datetime.datetime(2019, 1, 1, 0, 0)
     fig_delay = go.Figure()
+    fig_congestion = go.Figure()
+    init_datarate = None
+    relative_mean = None
     for sim_name in config.sim_name:
         datarate = int(sim_name.split("-")[-1])
         datarate = datarate / 1000000
-        print("Working on datarate", datarate)
+        if init_datarate is None:
+            init_datarate = datarate
+        factor = datarate / init_datarate
+        print(f"Working on datarate {datarate}; Which is {factor}x")
         sizes = []
         size_pds: List[pd.DataFrame] = []
+        size_dfs: List[pd.DataFrame] = []
         for cstl in config.cstl:
             size = cstl.split("-")[1] + " sats"
             sizes.append(size)
             sim_pd = None
+            sim_df = None
             for alg in config.algorithms:
                 alg_pd = None
+                alg_df = None
                 for run in range(config.runs):
                     (stats_path, _, _) = load_simulation_paths(
                         config, cstl, sim_name, alg, run
                     )
-                    # (_, file_path) = get_route_dump_file(
-                    #     config, cstl, sim_name, alg, run
-                    # )
+                    (_, file_path) = get_sats_dump_file(
+                        config, cstl, sim_name, alg, run
+                    )
+                    sats = load_sat_stats(str(file_path))
+                    df = pd.DataFrame(columns=["id", "timestamp", "queueSize"])
+                    for sat in sats:
+                        id = sat.sat_id
+                        entries = [[id, entry.start, entry.qs] for entry in sat.entries]
 
-                    # routes = load_routes(str(file_path))
-                    # distances = list(map(lambda r: r.length, routes))
+                        df = pd.concat(
+                            [pd.DataFrame(entries, columns=df.columns), df],
+                            ignore_index=True,
+                        )
 
+                    # df = df.groupby(["id", "timestamp"]).agg("mean")
+                    df["timestamp"] = df["timestamp"] * 1000 * 1000
+                    df["timestamp"] = df["timestamp"].astype("timedelta64[us]") + start  # type: ignore
+                    df = df.set_index("timestamp").resample("100us").last().ffill()
+                    df = df.reset_index()
+                    df = df.groupby("id")["queueSize"].mean().pipe(pd.DataFrame)
+                    df["queueSize"] = df["queueSize"] / factor
+                    # print(df)
+                    if alg_df is None:
+                        alg_df = df
+                    else:
+                        alg_df = pd.concat([alg_df, df])
+                        alg_df.reset_index()
+                        # print(alg_df)
+
+                    ############################## e2e delay ##############################
                     df = pd.read_csv(stats_path)
                     # df["distance"] = distances
                     df = df.loc[(df["dropReason"] == 99) & (df["type"] == "N")]
@@ -47,6 +81,18 @@ def paramstudy_datarate(config: Config):
                     else:
                         alg_pd = pd.concat([alg_pd, df])
                         alg_pd.reset_index()
+
+                ############################################################
+                if alg_df is None:
+                    raise Exception("alg_df is none but should not!")
+                alg_df = alg_df.groupby("id").agg("mean")
+                if sim_df is None:
+                    sim_df = alg_df
+                else:
+                    sim_df = pd.concat([sim_df, alg_df])
+                    sim_df.reset_index()
+
+                ############################## e2e delay ##############################
                 if alg_pd is None:
                     raise Exception("Alg_pd is none but should not!")
 
@@ -69,14 +115,28 @@ def paramstudy_datarate(config: Config):
                 else:
                     sim_pd = pd.concat([sim_pd, alg_pd])
                     sim_pd.reset_index()
+            ############################################################
+            if sim_df is None:
+                raise Exception("sim_df is none but should not!")
+            sim_df = sim_df.groupby("id").mean()
+
+            if relative_mean is None:
+                relative_mean = 1 / sim_df["queueSize"].mean()
+            
+            sim_df["queueSize"] = sim_df["queueSize"] * relative_mean
+
+            size_dfs.append(sim_df)
+
+            ############################## e2e delay ##############################
             if sim_pd is None:
                 raise Exception("sim_pd is none but should not!")
-
             sim_pd = sim_pd.groupby("pid").mean()
-            print("Add", size)
             size_pds.append(sim_pd)
 
-        for metric, fig in [("e2e-delay", fig_delay)]:
+        for metric, fig, dfs in [
+            ("e2e-delay", fig_delay, size_pds),
+            ("queueSize", fig_congestion, size_dfs),
+        ]:
             q1 = []
             median = []
             q3 = []
@@ -84,7 +144,7 @@ def paramstudy_datarate(config: Config):
             upperfence = []
             mean = []
 
-            for df in size_pds:
+            for df in dfs:
                 work_on = df[metric]
                 tmp_q1 = np.percentile(work_on, 25)
                 q1.append(tmp_q1)
@@ -130,43 +190,43 @@ def paramstudy_datarate(config: Config):
             "xanchor": "left",
             "x": 0.02,
         },
-        boxgap=0.023,
+        boxgap=0.01,
         boxgroupgap=0.2,
         boxmode="group",
         xaxis_title="Number of satellites",
         yaxis_title="Packet Delay [ms]",
     )
 
-    # fig_delay.update_yaxes(range=[0, 200])
+    fig_delay.update_yaxes(range=[0, 190])
 
     file_path = config.results_path
     os.makedirs(file_path, exist_ok=True)
     file_path = file_path.joinpath(f"paramstudy-datarate-delays.pdf")
     print("\t", "Write plot to file", file_path)
-    apply_default(fig_delay, height=500, width=800)
+    apply_default(fig_delay, height=600, width=800)
     fig_delay.write_image(file_path, engine="kaleido")
 
-    # fig_distance.update_layout(
-    #     legend={
-    #         "title_text": "Inclination",
-    #         "orientation": "h",
-    #         "yanchor": "top",
-    #         "y": 1.13,
-    #         "xanchor": "left",
-    #         "x": 0.02,
-    #     },
-    #     boxgap=0.02,
-    #     boxgroupgap=0.2,
-    #     boxmode="group",
-    #     xaxis_title="Number of satellites",
-    #     yaxis_title="Packet Distance [km]",
-    # )
+    fig_congestion.update_layout(
+        legend={
+            "title_text": "Datarate[Mbps]",
+            "orientation": "h",
+            "yanchor": "top",
+            "y": 1.13,
+            "xanchor": "left",
+            "x": 0.02,
+        },
+        boxgap=0.01,
+        boxgroupgap=0.2,
+        boxmode="group",
+        xaxis_title="Number of satellites",
+        yaxis_title="Relative congestion",
+    )
 
-    # fig_distance.update_yaxes(range=[0, 50000])
+    # fig_congestion.update_yaxes(range=[0, 50000])
 
-    # file_path = config.results_path
-    # os.makedirs(file_path, exist_ok=True)
-    # file_path = file_path.joinpath(f"paramstudy-datarate-distances.pdf")
-    # print("\t", "Write plot to file", file_path)
-    # apply_default(fig_distance, height=500, width=650)
-    # fig_distance.write_image(file_path, engine="kaleido")
+    file_path = config.results_path
+    os.makedirs(file_path, exist_ok=True)
+    file_path = file_path.joinpath(f"paramstudy-datarate-congestion.pdf")
+    print("\t", "Write plot to file", file_path)
+    apply_default(fig_congestion, height=600, width=800)
+    fig_congestion.write_image(file_path, engine="kaleido")

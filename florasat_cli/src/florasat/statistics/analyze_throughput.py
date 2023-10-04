@@ -114,8 +114,11 @@ def analyze_throughput(config: Config):
             ########## Plot data ##########
             print("\t", "Create plot...")
             fig = make_subplots()
+            colors = ["#636efa", "#ef553b", "#2ca02c", "#00cc96"]
+            positions = ["top left", "top right", "bottom left", "bottom right"]
             for name, df in processed_dfs:
-
+                color = colors.pop(0)
+                position = positions.pop(0)
                 # print(df.tail(20))
                 fig.add_trace(
                     # go.Scatter(
@@ -130,6 +133,18 @@ def analyze_throughput(config: Config):
                         x=df["recorded"],
                         y=df["datarate"].ewm(span=3000, adjust=False).mean(),
                     ),
+                )
+
+                mean_val = df["datarate"].mean()
+                fig.add_hline(
+                    mean_val,
+                    line_dash="dot",
+                    line_width=1,
+                    line_color=color,
+                    annotation_text=f"{round(mean_val, 3)}Mbps",
+                    annotation_font_color=color,
+                    annotation_font_size=20,
+                    annotation_position=position,
                 )
             fig.update_traces(line=dict(width=1), marker=dict(size=3))
             fig.update_layout(

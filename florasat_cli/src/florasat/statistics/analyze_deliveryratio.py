@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 from florasat.statistics.utils import Config, apply_default, load_stats
 
 
-def analyze_packetloss(config: Config):
+def analyze_deliveryratio(config: Config):
     for cstl in config.cstl:
         for sim_name in config.sim_name:
             plot_dfs: List[Tuple[str, pd.DataFrame]] = []
@@ -62,10 +62,10 @@ def analyze_packetloss(config: Config):
                 df.fillna(0, inplace=True)
                 df.replace(np.NaN, 0, inplace=True)
 
-                df["packetloss"] = (df["dropped"] / (df["rcvd"] + df["dropped"])) * 100
+                df["deliveryratio"] = (df["rcvd"] / (df["rcvd"] + df["dropped"])) * 100
 
-                df.fillna(0, inplace=True)
-                df.replace(np.NaN, 0, inplace=True)
+                df.fillna(100, inplace=True)
+                df.replace(np.NaN, 100, inplace=True)
 
                 print()
 
@@ -83,12 +83,12 @@ def analyze_packetloss(config: Config):
                     go.Scatter(
                         name=name,
                         x=df.recorded,
-                        y=df["packetloss"].ewm(span=3000, adjust=False).mean(),
+                        y=df["deliveryratio"].ewm(span=3000, adjust=False).mean(),
                         mode="lines",
                         line=dict(color=color)
                     )
                 )
-                mean_val = df["packetloss"].mean()
+                mean_val = df["deliveryratio"].mean()
                 fig.add_hline(
                     mean_val,
                     line_dash="dot",
@@ -105,10 +105,10 @@ def analyze_packetloss(config: Config):
                 yaxis_range=[0, 100],
             )
             fig.update_xaxes(title_text="Time (s)", nticks=10)
-            fig.update_yaxes(title_text="Packetloss [%]", dtick=10)
-            print("\t", "Write plot to file...")
+            fig.update_yaxes(title_text="Delivery Ratio [%]", dtick=10)
             file_path = config.results_path.joinpath(cstl).joinpath(sim_name)
             os.makedirs(file_path, exist_ok=True)
-            file_path = file_path.joinpath(f"packetloss.sum.pdf")
+            file_path = file_path.joinpath(f"delivery.ratio.pdf")
+            print("\t", "Write plot to file", file_path)
             apply_default(fig)
             fig.write_image(file_path, engine="kaleido")

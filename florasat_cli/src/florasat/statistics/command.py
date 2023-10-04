@@ -7,6 +7,7 @@ import tomli
 from florasat.statistics.analyze_distances import analyze_distances
 from florasat.statistics.analyze_hopcount import analyze_hopcounts
 from florasat.statistics.analyze_packetloss import analyze_packetloss
+from florasat.statistics.analyze_deliveryratio import analyze_deliveryratio
 from florasat.statistics.compare_delays import compare_delays
 from florasat.statistics.preprocess_routes import preprocess_routes
 from florasat.statistics.create_drop_heatmap import create_drop_heatmap
@@ -18,6 +19,11 @@ from florasat.statistics.analyze_throughput import analyze_throughput
 from florasat.statistics.paramstudy_altitude import paramstudy_altitude
 from florasat.statistics.paramstudy_inclination import paramstudy_inclination
 from florasat.statistics.paramstudy_datarate import paramstudy_datarate
+from florasat.statistics.compare_failure_scenarios import compare_failure_scenarios
+from florasat.statistics.compare_congestion_scenarios import (
+    compare_congestion_scenarios,
+)
+from florasat.statistics.compare_queuing_delay import compare_queuing_delay
 
 
 def generate_statistics_subparser(subparsers):
@@ -139,6 +145,14 @@ def generate_statistics_subparser(subparsers):
         action="store_true",
         required=False,
     )
+    
+    stats_parser.add_argument(
+        "--deliveryratio",
+        help="Generate deliveryratio graph",
+        dest="f_deliveryratio",
+        action="store_true",
+        required=False,
+    )
 
     stats_parser.add_argument(
         "--drop-heatmap",
@@ -184,6 +198,30 @@ def generate_statistics_subparser(subparsers):
         "--all",
         help="Generate all statistics",
         dest="f_all",
+        action="store_true",
+        required=False,
+    )
+
+    stats_parser.add_argument(
+        "--compare-congestion-scenarios",
+        help="Compares multiple congestion scenarios.",
+        dest="f_compare_congestion",
+        action="store_true",
+        required=False,
+    )
+
+    stats_parser.add_argument(
+        "--compare-failure-scenarios",
+        help="Compares multiple failure scenarios.",
+        dest="f_compare_failures",
+        action="store_true",
+        required=False,
+    )
+
+    stats_parser.add_argument(
+        "--compare-queuing-delay",
+        help="Compares queuing delay of multiple scenarios.",
+        dest="f_compare_queuing_delays",
         action="store_true",
         required=False,
     )
@@ -293,6 +331,7 @@ def handle_run(args):
         args.f_hops = True
         args.f_distances = True
         args.f_packetloss = True
+        args.f_deliveryratio = True
         args.f_drop_heatmap = True
         args.f_e2e_delay_cdf = True
         args.f_compare_delay = True
@@ -315,6 +354,7 @@ def handle_run(args):
     print("-> Gen. hops CDF:", "\t", "\t", args.f_hops)
     print("-> Gen. distance CDF:", "\t", "\t", args.f_distances)
     print("-> Gen. packetloss graph:", "\t", args.f_packetloss)
+    print("-> Gen. deliveryratio graph:", "\t", args.f_deliveryratio)
     print("-> Gen. drop heatmap:", "\t", "\t", args.f_drop_heatmap)
     print("-> Gen. E2E delay CDF:", "\t", "\t", args.f_e2e_delay_cdf)
     print("-> Gen. delay comparison graph:\t", args.f_compare_delay)
@@ -336,6 +376,7 @@ def handle_run(args):
         and not args.f_hops
         and not args.f_distances
         and not args.f_packetloss
+        and not args.f_deliveryratio
         and not args.f_drop_heatmap
         and not args.f_e2e_delay_cdf
         and not args.f_compare_delay
@@ -344,6 +385,9 @@ def handle_run(args):
         and not args.f_paramstudy_altitude
         and not args.f_paramstudy_inclination
         and not args.f_paramstudy_datarate
+        and not args.f_compare_failures
+        and not args.f_compare_congestion
+        and not args.f_compare_queuing_delays
     ):
         print("")
         print("Nothing to do...")
@@ -406,6 +450,16 @@ def handle_run(args):
             analyze_packetloss(stats_config)
         except FileNotFoundError as e:
             print("X Failed to generate packetloss graph. Could not find:", e.filename)
+            sys.exit(1)
+
+
+    if args.f_deliveryratio:
+        print("")
+        print("Run deliveryratio graph generation...")
+        try:
+            analyze_deliveryratio(stats_config)
+        except FileNotFoundError as e:
+            print("X Failed to generate deliveryratio graph. Could not find:", e.filename)
             sys.exit(1)
 
     if args.f_drop_heatmap:
@@ -505,5 +559,44 @@ def handle_run(args):
             )
             print(
                 "Are satellite states preprocessed? This is required once after FLoRaSat simulation runs."
+            )
+            sys.exit(1)
+
+    if args.f_compare_failures:
+        print("")
+        print("Run compare failures comparison graph generation...")
+        try:
+            compare_failure_scenarios(stats_config)
+        except FileNotFoundError as e:
+            print(
+                "X Failed to generate compare failures graph. Could not find:",
+                e.filename,
+            )
+            sys.exit(1)
+
+    if args.f_compare_congestion:
+        print("")
+        print("Run compare congestion comparison graph generation...")
+        try:
+            compare_congestion_scenarios(stats_config)
+        except FileNotFoundError as e:
+            print(
+                "X Failed to generate compare congestions graph. Could not find:",
+                e.filename,
+            )
+            print(
+                "Are satellite states preprocessed? This is required once after FLoRaSat simulation runs."
+            )
+            sys.exit(1)
+
+    if args.f_compare_queuing_delays:
+        print("")
+        print("Run generate compare queuing delays graph generation...")
+        try:
+            compare_queuing_delay(stats_config)
+        except FileNotFoundError as e:
+            print(
+                "X Failed to generate compare queuing delays graph. Could not find:",
+                e.filename,
             )
             sys.exit(1)

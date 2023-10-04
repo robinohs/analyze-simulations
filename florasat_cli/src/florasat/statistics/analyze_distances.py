@@ -47,4 +47,4 @@ def analyze_distances(config: Config):
             file_path = config.results_path.joinpath(cstl).joinpath(sim_name)
             os.makedirs(file_path, exist_ok=True)
             file_path = file_path.joinpath(f"distance.cdf.pdf")
-            plot_cdf(plot_dfs, "distance", file_path, "Distance[km]")
+            plot_cdf(plot_dfs, "distance", file_path, "Distance[km]", mean=True, mean_unit="km")

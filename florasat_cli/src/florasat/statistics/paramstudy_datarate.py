@@ -1,199 +1,172 @@
 import os
+from typing import List
 from florasat_statistics import load_routes, load_sat_stats
 import numpy as np
 import pandas as pd
 from florasat.statistics.utils import (
     Config,
     apply_default,
-    get_route_dump_file,
-    get_sats_dump_file,
     load_simulation_paths,
-    load_stats,
 )
 import plotly.express as px
+import plotly.graph_objects as go
 
 
 def paramstudy_datarate(config: Config):
-    cstl_queues = {}
-    cstl_delays = {}
-    sizes = set()
-    datarates = set()
-    for cstl in config.cstl:
-        size = int(cstl.split("-")[1])
-        sizes.add(size)
-        print("Working on cstl", size)
-        sim_queues = {}
-        sim_delays = {}
-        for sim_name in config.sim_name:
-            datarate = int(sim_name.split("-")[-1])
-            datarate = int(datarate / 1000000)
-            datarates.add(datarate)
-            # print("Working on alt", alt)
-
-            alg_queues = {}
-            alg_delays = {}
-
+    fig_distance = go.Figure()
+    fig_delay = go.Figure()
+    for sim_name in config.sim_name:
+        datarate = int(sim_name.split("-")[-1])
+        datarate = datarate / 1000000
+        print("Working on datarate", datarate)
+        sizes = []
+        size_pds: List[pd.DataFrame] = []
+        for cstl in config.cstl:
+            size = cstl.split("-")[1] + " sats"
+            sizes.append(size)
+            sim_pd = None
             for alg in config.algorithms:
-                # print("\t", f"Working on {alg}")
-                (stats_path, _, _) = load_simulation_paths(
-                    config, cstl, sim_name, alg, 0
-                )
-                (_, file_path) = get_sats_dump_file(config, cstl, sim_name, alg, 0)
-
-                satellites = load_sat_stats(str(file_path))
-
-                df = pd.DataFrame(columns=["id", "timestamp", "queueSize"])
-                for sat in satellites:
-                    id = sat.sat_id
-                    entries = [[id, entry.start, entry.qs] for entry in sat.entries]
-
-                    df = pd.concat(
-                        [pd.DataFrame(entries, columns=df.columns), df],
-                        ignore_index=True,
+                alg_pd = None
+                for run in range(config.runs):
+                    (stats_path, _, _) = load_simulation_paths(
+                        config, cstl, sim_name, alg, run
                     )
-                df["timestamp"] = df["timestamp"].round(1)
+                    # (_, file_path) = get_route_dump_file(
+                    #     config, cstl, sim_name, alg, run
+                    # )
 
-                df = (
-                    df.groupby(["timestamp"])["queueSize"]
-                    .mean()
-                    .pipe(pd.DataFrame)
-                    .reset_index()
-                )
+                    # routes = load_routes(str(file_path))
+                    # distances = list(map(lambda r: r.length, routes))
 
-                # print(df)
+                    df = pd.read_csv(stats_path)
+                    # df["distance"] = distances
+                    df = df.loc[(df["dropReason"] == 99) & (df["type"] == "N")]
 
-                mean_queue = df["queueSize"].mean()
-                alg_queues[alg] = mean_queue
+                    if alg_pd is None:
+                        alg_pd = df
+                    else:
+                        alg_pd = pd.concat([alg_pd, df])
+                        alg_pd.reset_index()
+                if alg_pd is None:
+                    raise Exception("Alg_pd is none but should not!")
 
-                df = pd.read_csv(stats_path)
-
-                df["e2e-delay"] = (
+                alg_pd["e2e-delay"] = (
                     (
-                        df["queueDelay"]
-                        + df["procDelay"]
-                        + df["transDelay"]
-                        + df["propDelay"]
+                        alg_pd["queueDelay"]
+                        + alg_pd["procDelay"]
+                        + alg_pd["transDelay"]
+                        + alg_pd["propDelay"]
                     )
                     * 1000
                 ).round()
 
-                df = df.loc[(df["dropReason"] == 99) & (df["type"] == "N")]
+                alg_pd = alg_pd[["pid", "e2e-delay"]]
 
-                mean_delay = df["e2e-delay"].mean()
+                alg_pd = alg_pd.groupby("pid").agg("mean")
 
-                alg_delays[alg] = mean_delay
+                if sim_pd is None:
+                    sim_pd = alg_pd
+                else:
+                    sim_pd = pd.concat([sim_pd, alg_pd])
+                    sim_pd.reset_index()
+            if sim_pd is None:
+                raise Exception("sim_pd is none but should not!")
 
-            # preprocess queues
-            mean_queues = 0
-            keys = len(alg_queues.keys())
-            for key in alg_queues.keys():
-                mean_queues += alg_queues[key]
-            mean_queues = mean_queues / keys
-            sim_queues[datarate] = mean_queues
+            sim_pd = sim_pd.groupby("pid").mean()
+            print("Add", size)
+            size_pds.append(sim_pd)
 
-            # preprocess delays
-            mean_delay = 0
-            keys = len(alg_delays.keys())
-            for key in alg_delays.keys():
-                mean_delay += alg_delays[key]
-            mean_delay = mean_delay / keys
+        for metric, fig in [("e2e-delay", fig_delay)]:
+            q1 = []
+            median = []
+            q3 = []
+            lowerfence = []
+            upperfence = []
+            mean = []
 
-            sim_delays[datarate] = mean_delay
+            for df in size_pds:
+                work_on = df[metric]
+                tmp_q1 = np.percentile(work_on, 25)
+                q1.append(tmp_q1)
+                median.append(np.percentile(work_on, 50))  # median
+                tmp_q3 = np.percentile(work_on, 75)
+                q3.append(tmp_q3)  # q3
 
-        cstl_queues[size] = sim_queues
-        cstl_delays[size] = sim_delays
+                iqr = tmp_q3 - tmp_q1
+                th_upper = tmp_q3 + 1.5 * iqr
+                max_delay = work_on.max()
+                th_lower = tmp_q1 - 1.5 * iqr
+                min_delay = work_on.min()
 
-    sizes = list(sizes)
-    sizes.sort()
-    datarates = list(datarates)
-    datarates.sort()
+                lowerfence.append(max(min_delay, float(th_lower)))
+                upperfence.append(min(max_delay, float(th_upper)))
+                mean.append(work_on.mean())
 
-    for size in sizes:
-        factor = None
-        for datarate in datarates:
-            if factor is None:
-                factor = 1 / cstl_queues[size][datarate]
-                print(f"Set {size} {datarate} to 0")
-                cstl_queues[size][datarate] = 0.0
-            else:
-                print(
-                    f"Set {size} {datarate} to {(cstl_queues[size][datarate] * factor - 1) * 100}"
+            fig.add_trace(
+                go.Box(
+                    x=sizes,
+                    y=[
+                        [0],
+                        [0],
+                        [0],
+                    ],
+                    q1=q1,
+                    median=median,
+                    q3=q3,
+                    lowerfence=lowerfence,
+                    upperfence=upperfence,
+                    mean=mean,
+                    boxpoints=False,
+                    name=datarate,
                 )
-                cstl_queues[size][datarate] = (
-                    cstl_queues[size][datarate] * factor - 1
-                ) * 100
+            )
 
-    ###################################################################
-    ########################### plot queues ###########################
-    ###################################################################
-    df = pd.DataFrame.from_dict(cstl_queues)
-    df.index = df.index.astype(int)
-    df = df.sort_index()
-
-    fig = px.bar(df, x=df.index, y=sizes, barmode="group", text_auto=True)
-
-    fig.update_traces(
-        # textfont_size=26, textangle=90, textposition="inside", cliponaxis=False
-        texttemplate="+%{value:.2f}%",
-    )
-
-    fig.update_layout(
+    fig_delay.update_layout(
         legend={
-            "title_text": "",
+            "title_text": "Datarate[Mbps]",
             "orientation": "h",
-            "yanchor": "bottom",
-            "y": -0.18,
+            "yanchor": "top",
+            "y": 1.13,
             "xanchor": "left",
-            "x": -0.1,
+            "x": 0.02,
         },
-        xaxis_title="Datarate [MBit/s]",
-        yaxis_title="Relative Congestion",
+        boxgap=0.023,
+        boxgroupgap=0.2,
+        boxmode="group",
+        xaxis_title="Number of satellites",
+        yaxis_title="Packet Delay [ms]",
     )
 
-    fig.update_xaxes(type="category")
-    # fig.update_traces(marker_line_color="#000", marker_line_width=1)
+    # fig_delay.update_yaxes(range=[0, 200])
 
-    print("\t", "Write plot to file...")
-    file_path = config.results_path
-    os.makedirs(file_path, exist_ok=True)
-    file_path = file_path.joinpath(f"paramstudy-datarate-congestion.pdf")
-    apply_default(fig)
-    fig.write_image(file_path, engine="kaleido")
-
-    ###################################################################
-    ########################### plot delays ###########################
-    ###################################################################
-    df = pd.DataFrame.from_dict(cstl_delays)
-    df.index = df.index.astype(int)
-    df = df.sort_index()
-
-    sizes = [int(x) for x in sizes]
-
-    fig = px.bar(df, x=df.index, y=sizes, barmode="group", text_auto=True)
-
-    fig.update_traces(
-        # textfont_size=26, textangle=90, textposition="inside", cliponaxis=False
-        texttemplate="%{value:.2f}",
-    )
-
-    fig.update_layout(
-        legend={
-            "title_text": "",
-            "orientation": "h",
-            "yanchor": "bottom",
-            "y": -0.18,
-            "xanchor": "left",
-            "x": -0.1,
-        },
-        xaxis_title="Datarate [MBit/s]",
-        yaxis_title="Avg. Packet Delay [ms]",
-    )
-
-    fig.update_xaxes(type="category")
-
-    print("\t", "Write plot to file...")
     file_path = config.results_path
     os.makedirs(file_path, exist_ok=True)
     file_path = file_path.joinpath(f"paramstudy-datarate-delays.pdf")
-    apply_default(fig)
-    fig.write_image(file_path, engine="kaleido")
+    print("\t", "Write plot to file", file_path)
+    apply_default(fig_delay, height=500, width=800)
+    fig_delay.write_image(file_path, engine="kaleido")
+
+    # fig_distance.update_layout(
+    #     legend={
+    #         "title_text": "Inclination",
+    #         "orientation": "h",
+    #         "yanchor": "top",
+    #         "y": 1.13,
+    #         "xanchor": "left",
+    #         "x": 0.02,
+    #     },
+    #     boxgap=0.02,
+    #     boxgroupgap=0.2,
+    #     boxmode="group",
+    #     xaxis_title="Number of satellites",
+    #     yaxis_title="Packet Distance [km]",
+    # )
+
+    # fig_distance.update_yaxes(range=[0, 50000])
+
+    # file_path = config.results_path
+    # os.makedirs(file_path, exist_ok=True)
+    # file_path = file_path.joinpath(f"paramstudy-datarate-distances.pdf")
+    # print("\t", "Write plot to file", file_path)
+    # apply_default(fig_distance, height=500, width=650)
+    # fig_distance.write_image(file_path, engine="kaleido")

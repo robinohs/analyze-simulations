@@ -1,174 +1,168 @@
 import os
+from typing import List
 from florasat_statistics import load_routes
+import numpy as np
 
 import pandas as pd
 from florasat.statistics.utils import Config, apply_default, get_route_dump_file, load_simulation_paths, load_stats
 import plotly.express as px
+import plotly.graph_objects as go
 
 def paramstudy_inclination(config: Config):
-    cstl_distances = {}
-    cstl_delays = {}
-    sizes = []
-    for cstl in config.cstl:
-        size = cstl.split("-")[1]
-        sizes.append(size)
-        print("Working on cstl", size)
-        sim_distances = {}
-        sim_delays = {}
-        for sim_name in config.sim_name:
-            alt = sim_name.split("-")[-1]
-            # print("Working on alt", alt)
-
-            alg_distances = {}
-            alg_delays = {}
-
+    fig_distance = go.Figure()
+    fig_delay = go.Figure()
+    for sim_name in config.sim_name:
+        incl = sim_name.split("-")[-1] + "°"
+        print("Working on inclination", incl)
+        sizes = []
+        size_pds: List[pd.DataFrame] = []
+        for cstl in config.cstl:
+            size = cstl.split("-")[1] + " sats"
+            sizes.append(size)
+            sim_pd = None
             for alg in config.algorithms:
-                # print("\t", f"Working on {alg}")
-                (stats_path, _, _) = load_simulation_paths(
-                    config, cstl, sim_name, alg, 0
-                )
-                (_, file_path) = get_route_dump_file(config, cstl, sim_name, alg, 0)
+                alg_pd = None
+                for run in range(config.runs):
+                    (stats_path, _, _) = load_simulation_paths(
+                        config, cstl, sim_name, alg, run
+                    )
+                    (_, file_path) = get_route_dump_file(
+                        config, cstl, sim_name, alg, run
+                    )
 
-                routes = load_routes(str(file_path))
-                distances = list(map(lambda r: r.length, routes))
-                df = pd.read_csv(stats_path)
-                df["distance"] = distances
+                    routes = load_routes(str(file_path))
+                    distances = list(map(lambda r: r.length, routes))
 
-                df["e2e-delay"] = (
+                    df = pd.read_csv(stats_path)
+                    df["distance"] = distances
+                    df = df.loc[(df["dropReason"] == 99) & (df["type"] == "N")]
+
+                    if alg_pd is None:
+                        alg_pd = df
+                    else:
+                        alg_pd = pd.concat([alg_pd, df])
+                        alg_pd.reset_index()
+                if alg_pd is None:
+                    raise Exception("Alg_pd is none but should not!")
+
+                alg_pd["e2e-delay"] = (
                     (
-                        df["queueDelay"]
-                        + df["procDelay"]
-                        + df["transDelay"]
-                        + df["propDelay"]
+                        alg_pd["queueDelay"]
+                        + alg_pd["procDelay"]
+                        + alg_pd["transDelay"]
+                        + alg_pd["propDelay"]
                     )
                     * 1000
                 ).round()
 
-                df = df.loc[(df["dropReason"] == 99) & (df["type"] == "N")]
+                alg_pd = alg_pd[["pid", "distance", "e2e-delay"]]
 
-                mean_distance = df["distance"].mean()
-                mean_delay = df["e2e-delay"].mean()
+                alg_pd = alg_pd.groupby("pid").agg("mean")
 
-                alg_distances[alg] = mean_distance
-                alg_delays[alg] = mean_delay
+                if sim_pd is None:
+                    sim_pd = alg_pd
+                else:
+                    sim_pd = pd.concat([sim_pd, alg_pd])
+                    sim_pd.reset_index()
+            if sim_pd is None:
+                raise Exception("sim_pd is none but should not!")
 
-                # new_record = pd.DataFrame([{'Name':'Jane', 'Age':25, 'Location':'Madrid'}])
-                # sim_df = pd.concat([sim_df, new_record], ignore_index=True)
+            sim_pd = sim_pd.groupby("pid").mean()
+            print("Add", size)
+            size_pds.append(sim_pd)
 
-                # fig.add_trace(
-                #     go.Scatter(
-                #         name="Test",
-                #         x=stats_df["distance"].values,
-                #         y=stats_df["cdf"],
-                #         mode="markers+lines",
-                #     )
-                # )
+        for metric, fig in [("e2e-delay", fig_delay), ("distance", fig_distance)]:
+            q1 = []
+            median = []
+            q3 = []
+            lowerfence = []
+            upperfence = []
+            mean = []
 
-            mean_distance = 0
-            keys = len(alg_distances.keys())
-            for key in alg_distances.keys():
-                mean_distance += alg_distances[key]
+            for df in size_pds:
+                work_on = df[metric]
+                tmp_q1 = np.percentile(work_on, 25)
+                q1.append(tmp_q1)
+                median.append(np.percentile(work_on, 50))  # median
+                tmp_q3 = np.percentile(work_on, 75)
+                q3.append(tmp_q3)  # q3
 
-            mean_distance = mean_distance / keys
+                iqr = tmp_q3 - tmp_q1
+                th_upper = tmp_q3 + 1.5 * iqr
+                max_delay = work_on.max()
+                th_lower = tmp_q1 - 1.5 * iqr
+                min_delay = work_on.min()
 
-            mean_delay = 0
-            keys = len(alg_delays.keys())
-            for key in alg_delays.keys():
-                mean_delay += alg_delays[key]
+                lowerfence.append(max(min_delay, float(th_lower)))
+                upperfence.append(min(max_delay, float(th_upper)))
+                mean.append(work_on.mean())
 
-            mean_delay = mean_delay / keys
+            fig.add_trace(
+                go.Box(
+                    x=sizes,
+                    y=[
+                        [0],
+                        [0],
+                        [0],
+                    ],
+                    q1=q1,
+                    median=median,
+                    q3=q3,
+                    lowerfence=lowerfence,
+                    upperfence=upperfence,
+                    mean=mean,
+                    boxpoints=False,
+                    name=incl,
+                )
+            )
 
-            sim_distances[alt] = mean_distance
-            sim_delays[alt] = mean_delay
-        cstl_distances[size] = sim_distances
-        cstl_delays[size] = sim_delays
-    print(cstl_distances)
-    print(cstl_delays)
-
-    # plot delays
-    df = pd.DataFrame.from_dict(cstl_delays)
-
-    df.index = df.index.astype(int)
-
-    df = df.sort_index()
-
-    # smallest = [df[size].min() for size in sizes]
-    # smallest = min(smallest) * 0.95  # type: ignore
-
-    # biggest = [df[size].max() for size in sizes]
-    # biggest = max(biggest) * 1.01  # type: ignore
-
-    # print(smallest, biggest)
-
-    fig = px.bar(df, x=df.index, y=sizes, barmode="group", text_auto=True)
-
-    fig.update_traces(
-        # textfont_size=26, textangle=90, textposition="inside", cliponaxis=False
-        texttemplate="%{value:.2f}",
-    )
-
-    fig.update_layout(
+    fig_delay.update_layout(
         legend={
-            "title_text": "",
+            "title_text": "Inclination",
             "orientation": "h",
-            "yanchor": "bottom",
-            "y": -0.18,
+            "yanchor": "top",
+            "y": 1.13,
             "xanchor": "left",
-            "x": -0.1,
+            "x": 0.02,
         },
-        xaxis_title="Inclination",
-        yaxis_title="Avg. Packet Delay [ms]",
+        boxgap=0.023,
+        boxgroupgap=0.2,
+        boxmode="group",
+        xaxis_title="Number of satellites",
+        yaxis_title="Packet Delay [ms]",
     )
 
-    # fig.update_yaxes(range=[smallest, biggest])
+    fig_delay.update_yaxes(range=[0, 200])
 
-    print("\t", "Write plot to file...")
     file_path = config.results_path
     os.makedirs(file_path, exist_ok=True)
     file_path = file_path.joinpath(f"paramstudy-inclination-delays.pdf")
-    apply_default(fig)
-    fig.write_image(file_path, engine="kaleido")
+    print("\t", "Write plot to file", file_path)
+    apply_default(fig_delay, height=500, width=650)
+    fig_delay.write_image(file_path, engine="kaleido")
 
-    # # plot distances
-    df = pd.DataFrame.from_dict(cstl_distances)
-
-    df.index = df.index.astype(int)
-
-    df = df.sort_index()
-
-    # smallest = [df[alg].min() for alg in config.algorithms]
-    # smallest = min(smallest) * 0.95  # type: ignore
-
-    # biggest = [df[alg].max() for alg in config.algorithms]
-    # biggest = max(biggest) * 1.01  # type: ignore
-
-    # print(smallest, biggest)
-
-    fig = px.bar(df, x=df.index, y=sizes, barmode="group", text_auto=True)
-
-    fig.update_traces(
-        # textfont_size=26, textangle=90, textposition="inside", cliponaxis=False
-        texttemplate="%{value:.0f}",
-    )
-
-    fig.update_layout(
+    fig_distance.update_layout(
         legend={
-            "title_text": "",
+            "title_text": "Inclination",
             "orientation": "h",
-            "yanchor": "bottom",
-            "y": -0.18,
+            "yanchor": "top",
+            "y": 1.13,
             "xanchor": "left",
-            "x": -0.1,
+            "x": 0.02,
         },
-        xaxis_title="Inclination",
-        yaxis_title="Avg. Packet Distance [km]",
+        boxgap=0.02,
+        boxgroupgap=0.2,
+        boxmode="group",
+        xaxis_title="Number of satellites",
+        yaxis_title="Packet Distance [km]",
     )
 
-    # fig.update_yaxes(range=[smallest, biggest])
+    fig_distance.update_yaxes(range=[0, 50000])  
 
-    print("\t", "Write plot to file...")
     file_path = config.results_path
     os.makedirs(file_path, exist_ok=True)
     file_path = file_path.joinpath(f"paramstudy-inclination-distances.pdf")
-    apply_default(fig)
-    fig.write_image(file_path, engine="kaleido")
+    print("\t", "Write plot to file", file_path)
+    apply_default(fig_distance, height=500, width=650)
+    fig_distance.write_image(file_path, engine="kaleido")
+

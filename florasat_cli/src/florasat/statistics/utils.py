@@ -90,19 +90,47 @@ def fix_loading_mathjax():
     time.sleep(1)
 
 
-def apply_default(fig, size=22):
+def apply_default(fig, size=22, width=600, height=400, mt=10):
     fix_loading_mathjax()
     fig.update_layout(
-        margin=dict(l=10, r=10, b=10, t=10), font=dict(size=size), width=600, height=400
+        margin=dict(l=10, r=10, b=10, t=mt), font=dict(size=size), width=width, height=height
     )
 
 
 def plot_cdf(
-    dfs: List[Tuple[str, pd.DataFrame]], col: str, file_path: Path, x_name: str = ""
+    dfs: List[Tuple[str, pd.DataFrame]],
+    col: str,
+    file_path: Path,
+    x_name: str = "",
+    mean: bool = False,
+    mean_unit: str = "",
+    percent_1_low: bool = False,
+    percent_01_low: bool = False,
 ):
     print("\t", "Create plot...")
     fig = make_subplots()
+    colors = ["#636efa", "#ef553b", "#2ca02c", "#00cc96"]
+    positions = ["top right", "top left", "bottom left", "bottom right"]
     for name, df in dfs:
+        color = colors.pop(0)
+        position = positions.pop(0)
+
+        mean_val = df[col].mean().round(2)  # type: ignore
+
+        percent_1 = df[col].quantile(q=0.99)
+        if df[df[col] > percent_1][col] is not None:
+            percent_1_mean = df[df[col] > percent_1][col].mean()
+        percent_01 = df[col].quantile(q=0.999, interpolation="linear")
+        if df[df[col] > percent_01][col] is not None:
+            percent_01_mean = df[df[col] > percent_01][col].mean()
+
+        print(name)
+        print("mean:", mean_val)  # type: ignore
+
+        print("1%:", percent_1, "mean:", percent_1_mean)  # type: ignore
+        
+        print("0.1%:", percent_01, "mean:", percent_01_mean)  # type: ignore
+
         stats_df = (
             df.groupby(col)[col]
             .agg("count")
@@ -123,8 +151,20 @@ def plot_cdf(
                 x=stats_df[col].values,
                 y=stats_df["cdf"],
                 mode="markers+lines",
+                line=dict(color=color),
             )
         )
+        if mean:
+            fig.add_vline(
+                mean_val,
+                line_dash="dot",
+                line_width=1,
+                line_color=color,
+                annotation_text=f"{mean_val}{mean_unit}",
+                annotation_font_color=color,
+                annotation_font_size=20,
+                annotation_position=position,
+            )
     fig.update_traces(line=dict(width=2), marker=dict(size=2))
     fig.update_layout(
         legend=dict(yanchor="bottom", y=0.05, xanchor="right", x=0.95),

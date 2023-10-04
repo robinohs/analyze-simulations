@@ -30,4 +30,4 @@ def analyze_hopcounts(config: Config):
             file_path = config.results_path.joinpath(cstl).joinpath(sim_name)
             os.makedirs(file_path, exist_ok=True)
             file_path = file_path.joinpath(f"hopcount.cdf.pdf")
-            plot_cdf(named_dfs, "hops", file_path, "Hops")
+            plot_cdf(named_dfs, "hops", file_path, "Hops", mean=True)

@@ -7,7 +7,7 @@ def preprocess_satellites(config: Config):
     for cstl in config.cstl:
         for sim_name in config.sim_name:
             for alg in config.algorithms:
-                print("\t", f"Preprocess routes for {alg}/{cstl}/{sim_name}...")
+                print("\t", f"Preprocess satellites for {alg}/{cstl}/{sim_name}...")
                 for run in range(0, config.runs):
                     # load and process routes
                     (_, _, sats_fp) = load_simulation_paths(
